@@ -1,0 +1,14 @@
+Options -Indexes
+RewriteEngine On
+
+# Redireciona tudo para o index.php (exceto arquivos estáticos reais)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Protege pastas sensíveis
+RedirectMatch 403 ^/app/.*$
+RedirectMatch 403 ^/config/.*$
+RedirectMatch 403 ^/database/.*$
+RedirectMatch 403 ^/storage/.*$
+RedirectMatch 403 ^/logs/.*$

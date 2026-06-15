@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>KROMA PRINT - CRM Sales Funnel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Hanken+Grotesk:wght@600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .kanban-column {
+            min-width: 280px;
+            max-width: 320px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #bdc8d1;
+            border-radius: 10px;
+        }
+        .kanban-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+<script id="tailwind-config">tailwind.config = {darkMode: "class", theme: {extend: {colors: {"on-surface-variant": "#3e4850", "on-secondary": "#ffffff", "surface-container-lowest": "#ffffff", "surface-container": "#eceef0", "on-primary-fixed": "#001e2d", background: "#f7f9fb", primary: "#00658d", "secondary-fixed": "#dbe2f9", "on-background": "#191c1e", "secondary-fixed-dim": "#bfc6dc", "on-surface": "#191c1e", "error-container": "#ffdad6", "surface-bright": "#f7f9fb", "tertiary-container": "#8a9ab2", "on-primary-container": "#00354b", "on-secondary-fixed-variant": "#404759", surface: "#f7f9fb", "on-tertiary-container": "#223246", "outline-variant": "#bdc8d1", "on-tertiary-fixed-variant": "#38485d", "secondary-container": "#dbe2f9", "primary-fixed": "#c6e7ff", "surface-container-high": "#e6e8ea", "primary-fixed-dim": "#81cfff", outline: "#6e7881", "surface-dim": "#d8dadc", "tertiary-fixed": "#d3e4fe", secondary: "#575e71", "on-secondary-fixed": "#141b2b", "surface-container-highest": "#e0e3e5", "inverse-on-surface": "#eff1f3", "tertiary-fixed-dim": "#b7c8e1", "surface-container-low": "#f2f4f6", "surface-tint": "#00658d", "on-secondary-container": "#5d6477", "primary-container": "#00a3e0", "on-primary-fixed-variant": "#004c6b", "surface-variant": "#e0e3e5", "inverse-primary": "#81cfff", "inverse-surface": "#2d3133", error: "#ba1a1a", "on-error-container": "#93000a", "on-tertiary": "#ffffff", "on-error": "#ffffff", "on-primary": "#ffffff", tertiary: "#505f76", "on-tertiary-fixed": "#0b1c30"}, borderRadius: {DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px"}, spacing: {"container-max": "1440px", unit: "4px", xl: "32px", md: "16px", "sidebar-width": "260px", lg: "24px", sm: "8px", xs: "4px", gutter: "16px"}, fontFamily: {"body-lg": ["Inter"], "label-md": ["Inter"], "display-lg": ["Hanken Grotesk"], "body-md": ["Inter"], "headline-md": ["Hanken Grotesk"], "code-md": ["Inter"], "title-md": ["Inter"], "headline-lg": ["Hanken Grotesk"], headline: ["Hanken Grotesk"], display: ["Hanken Grotesk"], body: ["Inter"], label: ["Inter"]}, fontSize: {"label-md": ["12px", {lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600"}], "body-md": ["14px", {lineHeight: "20px", fontWeight: "400"}], "headline-md": ["24px", {lineHeight: "32px", fontWeight: "600"}], "title-md": ["18px", {lineHeight: "24px", fontWeight: "600"}], "headline-lg": ["32px", {lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600"}]}}}};</script>
+</head>
+<body class="bg-background text-on-surface font-body-md text-body-md overflow-hidden flex h-screen">
+<!-- SideNavBar -->
+<aside class="flex flex-col h-full py-md z-50 bg-secondary fixed left-0 top-0 h-full w-sidebar-width border-r border-outline-variant">
+<div class="px-md mb-xl">
+<h1 class="font-headline-md text-headline-md font-black text-on-primary-fixed">KROMA ERP</h1>
+<div class="flex items-center gap-xs mt-xs">
+<span class="w-2 h-2 rounded-full bg-primary-fixed-dim"></span>
+<span class="font-body-sm text-body-sm text-on-secondary opacity-80 uppercase tracking-widest text-[10px]">System Active</span>
+</div>
+</div>
+<nav class="flex-grow space-y-xs overflow-y-auto custom-scrollbar">
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="bg-primary-container text-on-primary-container border-l-4 border-primary px-md py-sm flex items-center gap-sm transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">CRM</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="request_quote">request_quote</span>
+<span class="font-label-md text-label-md">Budgets</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="precision_manufacturing">precision_manufacturing</span>
+<span class="font-label-md text-label-md">Production</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Stock</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Finance</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="badge">badge</span>
+<span class="font-label-md text-label-md">Human Resources</span>
+</a>
+</nav>
+<div class="px-md pt-md border-t border-on-secondary-fixed-variant mt-auto">
+<div class="bg-on-secondary-fixed-variant/50 p-sm rounded-lg mb-md">
+<p class="text-[10px] text-on-secondary opacity-70 uppercase font-bold mb-1">System Status</p>
+<p class="font-label-md text-label-md text-primary-fixed-dim">System Status: Optimal</p>
+</div>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all mb-xs" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="text-on-secondary px-md py-sm flex items-center gap-sm hover:bg-on-secondary-fixed-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-sidebar-width flex-grow flex flex-col h-full bg-background overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-md h-16 z-40 bg-surface border-b border-outline-variant sticky top-0">
+<div class="flex items-center gap-md">
+<span class="font-headline-md text-headline-md font-bold text-primary">KROMA PRINT</span>
+<div class="h-8 w-px bg-outline-variant mx-sm"></div>
+<h2 class="font-title-md text-title-md text-on-surface-variant">CRM Sales Funnel</h2>
+</div>
+<div class="flex items-center gap-lg">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline" data-icon="search">search</span>
+<input class="pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full text-body-md focus:ring-2 focus:ring-primary-container outline-none w-64 transition-all" placeholder="Search leads..." type="text"/>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</button>
+<button class="flex items-center gap-sm p-1 pr-3 rounded-full hover:bg-surface-container-high transition-all">
+<img alt="User profile photo" class="w-8 h-8 rounded-full bg-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKLLc6F5mL_-UAXWSuPo7v-zc96Ec0qW5LF9yqEaZeOmUOCqwNH_k_YjFRl2WEJ_agb2BVJH6-pT-Pq_J9_BhsSpkPMsST668WwV83TQ0X_5KEjta4ZEDcofmtxa8-YjTDQTEXwIZ35s5WYS2A7pGJ22mejGmVwMF7pvsPBMbkLcs9xr62_PHL2PBVNorrk_jJbxxs495Z-35KVsljS1PfW2uYJSnfT861-yK4VuqhlTa_qIb7ADpP4rOTLjn5o_Fj-WNRPIZzbf0"/>
+<span class="font-label-md text-label-md text-on-surface font-bold">Admin</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Filters Bar -->
+<div class="px-md py-sm bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<div class="flex flex-col">
+<label class="text-[10px] font-bold uppercase text-outline mb-1">Seller</label>
+<select class="bg-surface border border-outline-variant rounded px-sm py-1 font-label-md text-label-md focus:ring-primary focus:border-primary">
+<option>All Sellers</option>
+<option>Ricardo Oliveira</option>
+<option>Ana Martins</option>
+<option>Carlos Santos</option>
+</select>
+</div>
+<div class="flex flex-col">
+<label class="text-[10px] font-bold uppercase text-outline mb-1">Date Period</label>
+<select class="bg-surface border border-outline-variant rounded px-sm py-1 font-label-md text-label-md focus:ring-primary focus:border-primary">
+<option>Current Month</option>
+<option>Last 30 Days</option>
+<option>Last Quarter</option>
+</select>
+</div>
+<div class="flex flex-col">
+<label class="text-[10px] font-bold uppercase text-outline mb-1">Client Type</label>
+<div class="flex gap-1">
+<button class="px-sm py-1 bg-surface border border-outline-variant rounded font-label-md text-label-md hover:bg-surface-container-high">Final</button>
+<button class="px-sm py-1 bg-surface border border-outline-variant rounded font-label-md text-label-md hover:bg-surface-container-high">Resale</button>
+<button class="px-sm py-1 bg-primary-container text-on-primary-container border border-primary-container rounded font-label-md text-label-md">Partner</button>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-label-md font-bold text-outline">Total Pipeline: R$ 452.800,00</span>
+<button class="flex items-center gap-xs px-md py-2 bg-primary text-on-primary rounded font-label-md text-label-md hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                    More Filters
+                </button>
+</div>
+</div>
+<!-- Kanban Board Content -->
+<section class="flex-grow overflow-x-auto custom-scrollbar p-md flex gap-md bg-background">
+<!-- Column: Novo Lead -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Novo Lead (4)</h3>
+<span class="font-label-md text-label-md font-bold text-primary">R$ 42k</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto custom-scrollbar">
+<!-- Card 1 -->
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-fixed-dim"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Agência Vision</h4>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="language">language</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 12.500,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-tertiary-container/20 text-on-tertiary-container rounded text-[10px] font-bold uppercase">Cold</span>
+<span class="text-[10px] text-outline italic">2 days</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Indústria Metal X</h4>
+<span class="material-symbols-outlined text-[16px] text-green-500" data-icon="chat">chat</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 8.900,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-error-container text-on-error-container rounded text-[10px] font-bold uppercase">Urgent</span>
+<span class="text-[10px] text-outline italic">Today</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Primeiro Contato -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Primeiro Contato (2)</h3>
+<span class="font-label-md text-label-md font-bold text-primary">R$ 15k</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto custom-scrollbar">
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-fixed-dim"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Tech Solutions Inc.</h4>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="share">share</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 15.000,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-secondary-container text-on-secondary-container rounded text-[10px] font-bold uppercase">Standard</span>
+<span class="text-[10px] text-outline italic">4 days</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Orçamento Enviado -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Orçamento Enviado (3)</h3>
+<span class="font-label-md text-label-md font-bold text-primary">R$ 128k</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto custom-scrollbar">
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Supermercados BH</h4>
+<span class="material-symbols-outlined text-[16px] text-green-500" data-icon="chat">chat</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 84.200,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-error-container text-on-error-container rounded text-[10px] font-bold uppercase">Urgent</span>
+<span class="text-[10px] text-outline italic">12 days</span>
+</div>
+</div>
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-fixed-dim"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Eventos Premium</h4>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="language">language</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 43.800,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-tertiary-container/20 text-on-tertiary-container rounded text-[10px] font-bold uppercase">Cold</span>
+<span class="text-[10px] text-outline italic">20 days</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Negociação -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Negociação (5)</h3>
+<span class="font-label-md text-label-md font-bold text-primary">R$ 210k</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto custom-scrollbar">
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Editora Global</h4>
+<span class="material-symbols-outlined text-[16px] text-green-500" data-icon="chat">chat</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 156.000,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-primary-container text-on-primary-container rounded text-[10px] font-bold uppercase">Strategic</span>
+<span class="text-[10px] text-outline italic">5 days</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Aprovado -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Aprovado (2)</h3>
+<span class="font-label-md text-label-md font-bold text-primary">R$ 57k</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto bg-green-50/30 rounded-lg p-2 border border-dashed border-outline-variant">
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all group cursor-grab active:cursor-grabbing shadow-sm">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-green-500"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Prefeitura de Curitiba</h4>
+<span class="material-symbols-outlined text-[16px] text-primary" data-icon="language">language</span>
+</div>
+<p class="font-body-md text-body-md mb-md font-bold text-green-600">R$ 42.000,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-green-100 text-green-800 rounded text-[10px] font-bold uppercase">Generating OS</span>
+<span class="text-[10px] text-outline italic">Done</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Column: Perdido -->
+<div class="kanban-column flex flex-col h-full flex-shrink-0">
+<div class="flex items-center justify-between mb-sm px-xs">
+<h3 class="font-label-md text-label-md uppercase tracking-wider text-outline">Perdido (1)</h3>
+<span class="font-label-md text-label-md font-bold text-outline">R$ 0</span>
+</div>
+<div class="flex-grow space-y-sm overflow-y-auto opacity-60">
+<div class="kanban-card bg-surface border border-outline-variant p-md rounded relative transition-all grayscale">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-outline"></div>
+<div class="flex justify-between items-start mb-sm">
+<h4 class="font-label-md text-label-md font-bold text-on-surface">Restaurante Sabor</h4>
+<span class="material-symbols-outlined text-[16px]" data-icon="share">share</span>
+</div>
+<p class="font-body-md text-body-md mb-md">R$ 3.500,00</p>
+<div class="flex items-center justify-between">
+<span class="px-xs py-0.5 bg-surface-container-highest text-outline rounded text-[10px] font-bold uppercase">Price Reject</span>
+<span class="text-[10px] text-outline italic">Closed</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Floating Action Button -->
+<button class="fixed bottom-lg right-lg w-14 h-14 bg-primary-container text-on-primary-container rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 group overflow-hidden">
+<span class="material-symbols-outlined text-[32px] group-hover:hidden" data-icon="add">add</span>
+<span class="hidden group-hover:flex font-bold text-label-md px-4 whitespace-nowrap">Novo Lead</span>
+</button>
+</main>
+<script>
+        // Simple drag-and-drop placeholder visual logic
+        document.querySelectorAll('.kanban-card').forEach(card => {
+            card.addEventListener('dragstart', function() {
+                this.classList.add('opacity-50');
+            });
+            card.addEventListener('dragend', function() {
+                this.classList.remove('opacity-50');
+            });
+        });
+    </script>
+</body></html>

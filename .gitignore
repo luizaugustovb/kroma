@@ -1,0 +1,30 @@
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Dependências e build
+vendor/
+node_modules/
+dist/
+build/
+
+# Ambiente local
+.env
+.env.*
+!.env.example
+
+# Uploads, logs e cache local
+public/uploads/
+storage/
+logs/
+cache/
+tmp/
+
+# Backups e dumps
+*.sql.gz
+*.sql.zip
+*.bak
+*.backup
+*.tmp
