@@ -642,6 +642,58 @@ CREATE TABLE IF NOT EXISTS ordem_servico_etapas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: materiais
+-- ============================================================
+CREATE TABLE IF NOT EXISTS materiais (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) UNIQUE,
+    nome                VARCHAR(180) NOT NULL,
+    categoria           VARCHAR(120),
+    unidade             VARCHAR(20) DEFAULT 'un',
+    fornecedor          VARCHAR(180),
+    custo_atual         DECIMAL(12,2) DEFAULT 0,
+    estoque_atual       DECIMAL(12,3) DEFAULT 0,
+    estoque_minimo      DECIMAL(12,3) DEFAULT 0,
+    estoque_reservado   DECIMAL(12,3) DEFAULT 0,
+    localizacao         VARCHAR(120),
+    status              ENUM('ativo','inativo') DEFAULT 'ativo',
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_codigo (codigo),
+    INDEX idx_nome (nome),
+    INDEX idx_categoria (categoria),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: estoque_movimentacoes
+-- ============================================================
+CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    material_id         INT UNSIGNED NOT NULL,
+    ordem_servico_id    INT UNSIGNED,
+    usuario_id          INT UNSIGNED,
+    tipo                ENUM('entrada','saida','ajuste','reserva','baixa_reserva','cancelamento_reserva') NOT NULL,
+    origem              VARCHAR(120),
+    quantidade          DECIMAL(12,3) NOT NULL,
+    custo_unitario      DECIMAL(12,2) DEFAULT 0,
+    saldo_anterior      DECIMAL(12,3) DEFAULT 0,
+    saldo_posterior     DECIMAL(12,3) DEFAULT 0,
+    reservado_anterior  DECIMAL(12,3) DEFAULT 0,
+    reservado_posterior DECIMAL(12,3) DEFAULT 0,
+    observacao          TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (material_id) REFERENCES materiais(id) ON DELETE CASCADE,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_material (material_id),
+    INDEX idx_os (ordem_servico_id),
+    INDEX idx_tipo (tipo),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -711,7 +763,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
 SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
 FROM perfis p
-JOIN modulos m ON m.slug IN ('produtos','producao')
+JOIN modulos m ON m.slug IN ('produtos','producao','estoque')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),

@@ -100,6 +100,15 @@ $router->get('/producao/:id/editar', 'ProducaoController@editar');
 $router->post('/producao/:id/editar', 'ProducaoController@atualizar');
 $router->post('/producao/:id/status', 'ProducaoController@alterarStatus');
 
+// Estoque e materiais
+$router->get('/estoque', 'EstoqueController@index');
+$router->get('/estoque/novo', 'EstoqueController@novo');
+$router->post('/estoque/novo', 'EstoqueController@criar');
+$router->get('/estoque/:id', 'EstoqueController@ver');
+$router->get('/estoque/:id/editar', 'EstoqueController@editar');
+$router->post('/estoque/:id/editar', 'EstoqueController@atualizar');
+$router->post('/estoque/:id/movimentar', 'EstoqueController@movimentar');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

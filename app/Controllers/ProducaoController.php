@@ -123,6 +123,7 @@ class ProducaoController
 
         $itens = $this->itens($id);
         $etapas = $this->etapas($id);
+        $reservasEstoque = $this->movimentacoesEstoque($id);
         $statusLabels = $this->statusLabels;
         $prioridadeLabels = $this->prioridadeLabels;
         $etapaStatusLabels = $this->etapaStatusLabels;
@@ -504,6 +505,18 @@ class ProducaoController
              LEFT JOIN usuarios u ON u.id = e.responsavel_id
              WHERE e.ordem_servico_id = ?
              ORDER BY e.ordem, e.id",
+            [$ordemId]
+        );
+    }
+
+    private function movimentacoesEstoque(string $ordemId): array
+    {
+        return $this->queryPreparada(
+            "SELECT em.*, m.nome AS material_nome, m.unidade
+             FROM estoque_movimentacoes em
+             JOIN materiais m ON m.id = em.material_id
+             WHERE em.ordem_servico_id = ?
+             ORDER BY em.created_at DESC, em.id DESC",
             [$ordemId]
         );
     }

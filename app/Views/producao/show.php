@@ -22,6 +22,22 @@ $etapaStatusClasses = [
     'concluida' => 'badge-success',
     'cancelada' => 'badge-danger',
 ];
+$estoqueTipoClasses = [
+    'entrada' => 'badge-success',
+    'saida' => 'badge-danger',
+    'ajuste' => 'badge-info',
+    'reserva' => 'badge-warning',
+    'baixa_reserva' => 'badge-primary',
+    'cancelamento_reserva' => 'badge-secondary',
+];
+$estoqueTipoLabels = [
+    'entrada' => 'Entrada',
+    'saida' => 'Saída',
+    'ajuste' => 'Ajuste',
+    'reserva' => 'Reserva',
+    'baixa_reserva' => 'Baixa',
+    'cancelamento_reserva' => 'Cancelamento',
+];
 $totalEtapas = max(1, count($etapas));
 $etapasConcluidas = count(array_filter($etapas, fn($e) => $e['status'] === 'concluida'));
 $progresso = round(($etapasConcluidas / $totalEtapas) * 100);
@@ -124,6 +140,40 @@ if (!in_array($ordem['status'], ['finalizada','cancelada'], true) && !empty($ord
                 <a class="btn btn-secondary" href="<?= APP_URL ?>/producao"><i class="bi bi-arrow-left"></i> Voltar</a>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="card-title"><i class="bi bi-archive me-2 text-warning"></i>Reservas de Estoque</h6>
+        <span class="badge badge-warning"><?= count($reservasEstoque ?? []) ?> movimentos</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Tipo</th>
+                    <th>Quantidade</th>
+                    <th>Data</th>
+                    <th>Observação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach (($reservasEstoque ?? []) as $mov): ?>
+                <tr>
+                    <td><strong><?= htmlspecialchars($mov['material_nome']) ?></strong></td>
+                    <td><span class="badge <?= $estoqueTipoClasses[$mov['tipo']] ?? 'badge-secondary' ?>"><?= $estoqueTipoLabels[$mov['tipo']] ?? $mov['tipo'] ?></span></td>
+                    <td><?= number_format((float)$mov['quantidade'], 3, ',', '.') ?> <?= htmlspecialchars($mov['unidade']) ?></td>
+                    <td><?= date('d/m/Y H:i', strtotime($mov['created_at'])) ?></td>
+                    <td><?= htmlspecialchars($mov['observacao'] ?: '-') ?></td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (empty($reservasEstoque)): ?>
+                <tr><td colspan="5"><span class="badge badge-secondary">Nenhuma reserva vinculada</span></td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 </div>
 
