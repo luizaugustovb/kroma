@@ -90,6 +90,16 @@ $router->post('/produtos/:id/editar', 'ProdutoController@atualizar');
 $router->post('/produtos/:id/excluir', 'ProdutoController@excluir');
 $router->post('/produtos/:id/duplicar', 'ProdutoController@duplicar');
 
+// Produção e ordens de serviço
+$router->get('/producao', 'ProducaoController@index');
+$router->get('/producao/novo', 'ProducaoController@novo');
+$router->post('/producao/novo', 'ProducaoController@criar');
+$router->post('/producao/etapas/:id/status', 'ProducaoController@etapaStatus');
+$router->get('/producao/:id', 'ProducaoController@ver');
+$router->get('/producao/:id/editar', 'ProducaoController@editar');
+$router->post('/producao/:id/editar', 'ProducaoController@atualizar');
+$router->post('/producao/:id/status', 'ProducaoController@alterarStatus');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

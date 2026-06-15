@@ -555,6 +555,93 @@ CREATE TABLE IF NOT EXISTS produto_acabamentos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: ordem_servicos
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ordem_servicos (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    orcamento_id        INT UNSIGNED,
+    cliente_id          INT UNSIGNED,
+    responsavel_id      INT UNSIGNED,
+    titulo              VARCHAR(200) NOT NULL,
+    descricao           TEXT,
+    prioridade          ENUM('baixa','media','alta','urgente') DEFAULT 'media',
+    status              ENUM('aberta','em_producao','aguardando','finalizada','cancelada') DEFAULT 'aberta',
+    data_entrada        DATE,
+    data_prometida      DATE,
+    data_inicio         DATETIME,
+    data_finalizacao    DATETIME,
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_prometida (data_prometida)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: ordem_servico_itens
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ordem_servico_itens (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ordem_servico_id    INT UNSIGNED NOT NULL,
+    produto_id          INT UNSIGNED,
+    orcamento_item_id   INT UNSIGNED,
+    produto_nome        VARCHAR(200) NOT NULL,
+    descricao           TEXT,
+    quantidade          DECIMAL(12,3) DEFAULT 1,
+    unidade             VARCHAR(20) DEFAULT 'un',
+    largura             DECIMAL(10,3) DEFAULT 0,
+    altura              DECIMAL(10,3) DEFAULT 0,
+    area_m2             DECIMAL(12,3) DEFAULT 0,
+    material            VARCHAR(200),
+    acabamento          VARCHAR(200),
+    arquivo_ref         VARCHAR(300),
+    status              ENUM('pendente','em_producao','concluido','cancelado') DEFAULT 'pendente',
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE CASCADE,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL,
+    FOREIGN KEY (orcamento_item_id) REFERENCES orcamento_itens(id) ON DELETE SET NULL,
+    INDEX idx_os (ordem_servico_id),
+    INDEX idx_produto (produto_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: ordem_servico_etapas
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ordem_servico_etapas (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ordem_servico_id    INT UNSIGNED NOT NULL,
+    item_id             INT UNSIGNED,
+    processo_id         INT UNSIGNED,
+    responsavel_id      INT UNSIGNED,
+    nome                VARCHAR(150) NOT NULL,
+    setor               VARCHAR(100),
+    ordem               INT DEFAULT 0,
+    status              ENUM('pendente','em_producao','pausada','concluida','cancelada') DEFAULT 'pendente',
+    prazo               DATETIME,
+    data_inicio         DATETIME,
+    data_fim            DATETIME,
+    observacao          TEXT,
+    checklist           TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE CASCADE,
+    FOREIGN KEY (item_id) REFERENCES ordem_servico_itens(id) ON DELETE CASCADE,
+    FOREIGN KEY (processo_id) REFERENCES processos_produtivos(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_os (ordem_servico_id),
+    INDEX idx_status (status),
+    INDEX idx_setor (setor),
+    INDEX idx_prazo (prazo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -615,6 +702,17 @@ SELECT p.id, m.slug, 1, 1, 1, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('dashboard','crm','clientes','orcamentos')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('produtos','producao')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

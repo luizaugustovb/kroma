@@ -141,6 +141,12 @@ $statusClasses = [
                     <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
                     <button class="btn btn-danger w-100" type="submit"><i class="bi bi-x-circle"></i> Cancelar</button>
                 </form>
+                <?php else: ?>
+                    <?php if ($orcamento['status'] === 'aprovado' && Auth::pode('producao')): ?>
+                    <a href="<?= APP_URL ?>/producao/novo?orcamento_id=<?= $orcamento['id'] ?>" class="btn btn-primary">
+                        <i class="bi bi-gear"></i> Gerar OS
+                    </a>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <a href="<?= APP_URL ?>/orcamentos" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
             </div>
