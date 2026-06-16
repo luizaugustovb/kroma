@@ -32,6 +32,9 @@ $router->post('/install', 'InstallController@instalar');
 $router->get('/dashboard', 'DashboardController@index');
 $router->get('/dashboard/dados', 'DashboardController@dados');
 
+// BI Executivo
+$router->get('/bi', 'BiController@index');
+
 // Usuários
 $router->get('/usuarios', 'UsuarioController@index');
 $router->get('/usuarios/novo', 'UsuarioController@novo');
@@ -136,7 +139,6 @@ $router->post('/compras/:id/editar', 'ComprasController@atualizar');
 $router->post('/compras/:id/status', 'ComprasController@status');
 $router->post('/compras/:id/receber', 'ComprasController@receber');
 
-// Empresa (configurações)
 // RH operacional
 $router->get('/rh', 'RhController@index');
 $router->get('/rh/colaboradores/novo', 'RhController@novoColaborador');
@@ -160,6 +162,7 @@ $router->post('/rh/veiculos/novo', 'RhController@criarVeiculo');
 $router->get('/rh/veiculos/:id/editar', 'RhController@editarVeiculo');
 $router->post('/rh/veiculos/:id/editar', 'RhController@atualizarVeiculo');
 
+// Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');
 

@@ -1068,6 +1068,17 @@ ON DUPLICATE KEY UPDATE
     pode_editar = VALUES(pode_editar),
     pode_excluir = VALUES(pode_excluir);
 
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 0, 0, 0
+FROM perfis p
+JOIN modulos m ON m.slug IN ('bi')
+WHERE p.nome IN ('diretor','gerente','financeiro')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
 INSERT INTO usuarios (perfil_id, nome, email, senha, cargo, ativo, primeiro_acesso) VALUES
 (1, 'Administrador Master', 'contato@luizaugusto.me', '$2y$12$IvKtOxZGLUPbhmufrx749.bnmOgeCg565.5aoX/Lx1Ob1jV5.2D2O', 'Administrador', 1, 0);
 -- Senha: Luiz2012@
