@@ -370,6 +370,7 @@ CREATE TABLE IF NOT EXISTS orcamentos (
 CREATE TABLE IF NOT EXISTS orcamento_itens (
     id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     orcamento_id        INT UNSIGNED NOT NULL,
+    produto_id          INT UNSIGNED,
     produto_nome        VARCHAR(200) NOT NULL,
     descricao           TEXT,
     quantidade          DECIMAL(12,3) DEFAULT 1,
@@ -393,7 +394,25 @@ CREATE TABLE IF NOT EXISTS orcamento_itens (
     total               DECIMAL(12,2) DEFAULT 0,
     created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE CASCADE,
-    INDEX idx_orcamento (orcamento_id)
+    INDEX idx_orcamento (orcamento_id),
+    INDEX idx_produto (produto_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: orcamento_item_materiais
+-- ============================================================
+CREATE TABLE IF NOT EXISTS orcamento_item_materiais (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    orcamento_item_id   INT UNSIGNED NOT NULL,
+    material_id         INT UNSIGNED NOT NULL,
+    quantidade          DECIMAL(12,3) DEFAULT 0,
+    unidade             VARCHAR(20) DEFAULT 'un',
+    custo_unitario      DECIMAL(12,2) DEFAULT 0,
+    custo_total         DECIMAL(12,2) DEFAULT 0,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (orcamento_item_id) REFERENCES orcamento_itens(id) ON DELETE CASCADE,
+    INDEX idx_item (orcamento_item_id),
+    INDEX idx_material (material_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================

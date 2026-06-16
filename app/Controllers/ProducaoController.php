@@ -536,7 +536,7 @@ class ProducaoController
     {
         $itens = $this->queryPreparada("SELECT * FROM orcamento_itens WHERE orcamento_id = ? ORDER BY id", [$orcamentoId]);
         return array_map(fn($item) => [
-            'produto_id' => null,
+            'produto_id' => $item['produto_id'] ?? null,
             'orcamento_item_id' => $item['id'],
             'produto_nome' => $item['produto_nome'],
             'descricao' => $item['descricao'],
@@ -545,11 +545,27 @@ class ProducaoController
             'largura' => $item['largura'],
             'altura' => $item['altura'],
             'area_m2' => $item['area_m2'],
-            'material' => '',
+            'material' => $this->materialResumoOrcamentoItem((string)$item['id']),
             'acabamento' => '',
             'arquivo_ref' => '',
             'status' => 'pendente',
         ], $itens);
+    }
+
+    private function materialResumoOrcamentoItem(string $orcamentoItemId): string
+    {
+        $materiais = $this->queryPreparada(
+            "SELECT m.nome, oim.quantidade, oim.unidade
+             FROM orcamento_item_materiais oim
+             JOIN materiais m ON m.id = oim.material_id
+             WHERE oim.orcamento_item_id = ?
+             ORDER BY m.nome",
+            [$orcamentoItemId]
+        );
+        return implode(', ', array_map(
+            fn($m) => $m['nome'] . ' (' . number_format((float)$m['quantidade'], 3, ',', '.') . ' ' . $m['unidade'] . ')',
+            $materiais
+        ));
     }
 
     private function gerarCodigo(): string
