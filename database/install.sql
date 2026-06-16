@@ -694,6 +694,83 @@ CREATE TABLE IF NOT EXISTS estoque_movimentacoes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: contas_receber
+-- ============================================================
+CREATE TABLE IF NOT EXISTS contas_receber (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    cliente_id          INT UNSIGNED,
+    orcamento_id        INT UNSIGNED,
+    ordem_servico_id    INT UNSIGNED,
+    descricao           VARCHAR(220) NOT NULL,
+    origem              ENUM('manual','orcamento','ordem_servico') DEFAULT 'manual',
+    valor               DECIMAL(12,2) DEFAULT 0,
+    valor_pago          DECIMAL(12,2) DEFAULT 0,
+    vencimento          DATE,
+    data_pagamento      DATE,
+    forma_pagamento     VARCHAR(80),
+    status              ENUM('aberto','parcial','pago','cancelado') DEFAULT 'aberto',
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_vencimento (vencimento),
+    INDEX idx_cliente (cliente_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: contas_pagar
+-- ============================================================
+CREATE TABLE IF NOT EXISTS contas_pagar (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    fornecedor          VARCHAR(180),
+    categoria           VARCHAR(120),
+    descricao           VARCHAR(220) NOT NULL,
+    valor               DECIMAL(12,2) DEFAULT 0,
+    valor_pago          DECIMAL(12,2) DEFAULT 0,
+    vencimento          DATE,
+    data_pagamento      DATE,
+    forma_pagamento     VARCHAR(80),
+    status              ENUM('aberto','parcial','pago','cancelado') DEFAULT 'aberto',
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_vencimento (vencimento),
+    INDEX idx_fornecedor (fornecedor)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: caixa_movimentacoes
+-- ============================================================
+CREATE TABLE IF NOT EXISTS caixa_movimentacoes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    conta_receber_id    INT UNSIGNED,
+    conta_pagar_id      INT UNSIGNED,
+    usuario_id          INT UNSIGNED,
+    tipo                ENUM('entrada','saida') NOT NULL,
+    descricao           VARCHAR(220) NOT NULL,
+    valor               DECIMAL(12,2) DEFAULT 0,
+    forma_pagamento     VARCHAR(80),
+    data_movimento      DATE,
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conta_receber_id) REFERENCES contas_receber(id) ON DELETE SET NULL,
+    FOREIGN KEY (conta_pagar_id) REFERENCES contas_pagar(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_tipo (tipo),
+    INDEX idx_data (data_movimento),
+    INDEX idx_receber (conta_receber_id),
+    INDEX idx_pagar (conta_pagar_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -765,6 +842,17 @@ SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 E
 FROM perfis p
 JOIN modulos m ON m.slug IN ('produtos','producao','estoque')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente','financeiro') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('financeiro','comissoes')
+WHERE p.nome IN ('diretor','gerente','financeiro','comercial')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

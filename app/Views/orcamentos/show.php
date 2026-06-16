@@ -147,6 +147,11 @@ $statusClasses = [
                         <i class="bi bi-gear"></i> Gerar OS
                     </a>
                     <?php endif; ?>
+                    <?php if ($orcamento['status'] === 'aprovado' && Auth::pode('financeiro')): ?>
+                    <a href="<?= APP_URL ?>/financeiro/receber/novo?orcamento_id=<?= $orcamento['id'] ?>" class="btn btn-success">
+                        <i class="bi bi-cash-stack"></i> Gerar Cobrança
+                    </a>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <a href="<?= APP_URL ?>/orcamentos" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
             </div>

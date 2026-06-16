@@ -109,6 +109,18 @@ $router->get('/estoque/:id/editar', 'EstoqueController@editar');
 $router->post('/estoque/:id/editar', 'EstoqueController@atualizar');
 $router->post('/estoque/:id/movimentar', 'EstoqueController@movimentar');
 
+// Financeiro
+$router->get('/financeiro', 'FinanceiroController@index');
+$router->get('/financeiro/receber/novo', 'FinanceiroController@novoReceber');
+$router->post('/financeiro/receber/novo', 'FinanceiroController@criarReceber');
+$router->get('/financeiro/receber/:id', 'FinanceiroController@verReceber');
+$router->post('/financeiro/receber/:id/baixar', 'FinanceiroController@baixarReceber');
+$router->post('/financeiro/receber/:id/cancelar', 'FinanceiroController@cancelarReceber');
+$router->get('/financeiro/pagar/novo', 'FinanceiroController@novoPagar');
+$router->post('/financeiro/pagar/novo', 'FinanceiroController@criarPagar');
+$router->post('/financeiro/pagar/:id/baixar', 'FinanceiroController@baixarPagar');
+$router->post('/financeiro/pagar/:id/cancelar', 'FinanceiroController@cancelarPagar');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

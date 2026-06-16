@@ -137,6 +137,9 @@ if (!in_array($ordem['status'], ['finalizada','cancelada'], true) && !empty($ord
                     </div>
                 </form>
                 <a class="btn btn-secondary" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>/editar"><i class="bi bi-pencil"></i> Editar OS</a>
+                <?php if (Auth::pode('financeiro') && $ordem['status'] !== 'cancelada'): ?>
+                <a class="btn btn-success" href="<?= APP_URL ?>/financeiro/receber/novo?os_id=<?= $ordem['id'] ?>"><i class="bi bi-cash-stack"></i> Faturar OS</a>
+                <?php endif; ?>
                 <a class="btn btn-secondary" href="<?= APP_URL ?>/producao"><i class="bi bi-arrow-left"></i> Voltar</a>
             </div>
         </div>
