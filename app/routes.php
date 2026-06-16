@@ -137,6 +137,29 @@ $router->post('/compras/:id/status', 'ComprasController@status');
 $router->post('/compras/:id/receber', 'ComprasController@receber');
 
 // Empresa (configurações)
+// RH operacional
+$router->get('/rh', 'RhController@index');
+$router->get('/rh/colaboradores/novo', 'RhController@novoColaborador');
+$router->post('/rh/colaboradores/novo', 'RhController@criarColaborador');
+$router->get('/rh/colaboradores/:id/editar', 'RhController@editarColaborador');
+$router->post('/rh/colaboradores/:id/editar', 'RhController@atualizarColaborador');
+$router->get('/rh/setores/novo', 'RhController@novoSetor');
+$router->post('/rh/setores/novo', 'RhController@criarSetor');
+$router->get('/rh/setores/:id/editar', 'RhController@editarSetor');
+$router->post('/rh/setores/:id/editar', 'RhController@atualizarSetor');
+$router->get('/rh/cargos/novo', 'RhController@novoCargo');
+$router->post('/rh/cargos/novo', 'RhController@criarCargo');
+$router->get('/rh/cargos/:id/editar', 'RhController@editarCargo');
+$router->post('/rh/cargos/:id/editar', 'RhController@atualizarCargo');
+$router->get('/rh/equipamentos/novo', 'RhController@novoEquipamento');
+$router->post('/rh/equipamentos/novo', 'RhController@criarEquipamento');
+$router->get('/rh/equipamentos/:id/editar', 'RhController@editarEquipamento');
+$router->post('/rh/equipamentos/:id/editar', 'RhController@atualizarEquipamento');
+$router->get('/rh/veiculos/novo', 'RhController@novoVeiculo');
+$router->post('/rh/veiculos/novo', 'RhController@criarVeiculo');
+$router->get('/rh/veiculos/:id/editar', 'RhController@editarVeiculo');
+$router->post('/rh/veiculos/:id/editar', 'RhController@atualizarVeiculo');
+
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');
 

@@ -278,6 +278,9 @@ CREATE TABLE IF NOT EXISTS colaboradores (
     cargo           VARCHAR(100),
     setor           VARCHAR(100),
     salario         DECIMAL(10,2),
+    custo_hora      DECIMAL(12,2) DEFAULT 0,
+    jornada_mensal  INT DEFAULT 220,
+    habilidades     TEXT,
     data_admissao   DATE,
     data_demissao   DATE,
     tipo_contrato   ENUM('clt','pj','autonomo','estagio') DEFAULT 'clt',
@@ -292,6 +295,93 @@ CREATE TABLE IF NOT EXISTS colaboradores (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: rh_setores
+-- ============================================================
+CREATE TABLE IF NOT EXISTS rh_setores (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nome            VARCHAR(120) NOT NULL,
+    slug            VARCHAR(140) UNIQUE,
+    descricao       TEXT,
+    responsavel_id  INT UNSIGNED,
+    status          ENUM('ativo','inativo') DEFAULT 'ativo',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (responsavel_id) REFERENCES colaboradores(id) ON DELETE SET NULL,
+    INDEX idx_nome (nome),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: rh_cargos
+-- ============================================================
+CREATE TABLE IF NOT EXISTS rh_cargos (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    setor_id            INT UNSIGNED,
+    nome                VARCHAR(120) NOT NULL,
+    descricao           TEXT,
+    salario_base        DECIMAL(12,2) DEFAULT 0,
+    custo_hora_padrao   DECIMAL(12,2) DEFAULT 0,
+    status              ENUM('ativo','inativo') DEFAULT 'ativo',
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (setor_id) REFERENCES rh_setores(id) ON DELETE SET NULL,
+    INDEX idx_nome (nome),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: equipamentos
+-- ============================================================
+CREATE TABLE IF NOT EXISTS equipamentos (
+    id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo                  VARCHAR(40) UNIQUE,
+    nome                    VARCHAR(160) NOT NULL,
+    tipo                    ENUM('maquina','ferramenta','computador','impressora','acabamento','instalacao','outro') DEFAULT 'maquina',
+    setor_id                INT UNSIGNED,
+    responsavel_id          INT UNSIGNED,
+    marca                   VARCHAR(100),
+    modelo                  VARCHAR(120),
+    patrimonio              VARCHAR(80),
+    status                  ENUM('ativo','manutencao','inativo','baixado') DEFAULT 'ativo',
+    custo_hora              DECIMAL(12,2) DEFAULT 0,
+    data_aquisicao          DATE,
+    valor_aquisicao         DECIMAL(12,2) DEFAULT 0,
+    manutencao_prevista     DATE,
+    observacoes             TEXT,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (setor_id) REFERENCES rh_setores(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES colaboradores(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_tipo (tipo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: veiculos
+-- ============================================================
+CREATE TABLE IF NOT EXISTS veiculos (
+    id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo                  VARCHAR(40) UNIQUE,
+    nome                    VARCHAR(160) NOT NULL,
+    tipo                    ENUM('carro','moto','van','caminhao','outro') DEFAULT 'carro',
+    placa                   VARCHAR(20),
+    responsavel_id          INT UNSIGNED,
+    status                  ENUM('ativo','manutencao','inativo','baixado') DEFAULT 'ativo',
+    custo_km                DECIMAL(12,2) DEFAULT 0,
+    custo_hora              DECIMAL(12,2) DEFAULT 0,
+    km_atual                DECIMAL(12,1) DEFAULT 0,
+    manutencao_prevista     DATE,
+    observacoes             TEXT,
+    created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (responsavel_id) REFERENCES colaboradores(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_placa (placa),
+    INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -961,6 +1051,17 @@ SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente','financei
 FROM perfis p
 JOIN modulos m ON m.slug IN ('financeiro','comissoes')
 WHERE p.nome IN ('diretor','gerente','financeiro','comercial')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente','rh') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('colaboradores','equipamentos')
+WHERE p.nome IN ('diretor','gerente','rh','producao','estoque')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

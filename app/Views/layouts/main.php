@@ -147,6 +147,17 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             </div>
             <?php endif; ?>
 
+            <!-- RH -->
+            <?php if (Auth::pode('colaboradores') || Auth::pode('equipamentos')): ?>
+            <div class="nav-group">
+                <div class="nav-group-label">RH</div>
+                <a href="<?= APP_URL ?>/rh" class="nav-item" data-tooltip="RH Operacional">
+                    <i class="bi bi-person-badge"></i>
+                    <span class="nav-label">RH Operacional</span>
+                </a>
+            </div>
+            <?php endif; ?>
+
             <!-- Financeiro -->
             <?php if (Auth::pode('financeiro') || Auth::pode('comissoes')): ?>
             <div class="nav-group">
