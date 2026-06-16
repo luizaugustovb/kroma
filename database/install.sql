@@ -771,6 +771,95 @@ CREATE TABLE IF NOT EXISTS caixa_movimentacoes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: fornecedores
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fornecedores (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) UNIQUE,
+    nome                VARCHAR(180) NOT NULL,
+    tipo_pessoa         ENUM('juridica','fisica') DEFAULT 'juridica',
+    cpf_cnpj            VARCHAR(20),
+    contato             VARCHAR(120),
+    email               VARCHAR(150),
+    telefone            VARCHAR(30),
+    whatsapp            VARCHAR(30),
+    endereco            VARCHAR(250),
+    cidade              VARCHAR(100),
+    estado              CHAR(2),
+    status              ENUM('ativo','inativo') DEFAULT 'ativo',
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_codigo (codigo),
+    INDEX idx_nome (nome),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: fornecedor_materiais
+-- ============================================================
+CREATE TABLE IF NOT EXISTS fornecedor_materiais (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    fornecedor_id   INT UNSIGNED NOT NULL,
+    material_id     INT UNSIGNED NOT NULL,
+    observacao      VARCHAR(250),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materiais(id) ON DELETE CASCADE,
+    UNIQUE KEY uk_fornecedor_material (fornecedor_id, material_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: compras
+-- ============================================================
+CREATE TABLE IF NOT EXISTS compras (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    fornecedor_id       INT UNSIGNED,
+    solicitante_id      INT UNSIGNED,
+    aprovado_por_id     INT UNSIGNED,
+    status              ENUM('rascunho','solicitada','aprovada','recebida','cancelada') DEFAULT 'rascunho',
+    origem              ENUM('manual','estoque_critico') DEFAULT 'manual',
+    titulo              VARCHAR(200) NOT NULL,
+    data_solicitacao    DATE,
+    data_aprovacao      DATETIME,
+    data_recebimento    DATETIME,
+    previsao_entrega    DATE,
+    total               DECIMAL(12,2) DEFAULT 0,
+    gerar_conta_pagar   TINYINT(1) DEFAULT 1,
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
+    FOREIGN KEY (solicitante_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (aprovado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_fornecedor (fornecedor_id),
+    INDEX idx_previsao (previsao_entrega)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: compra_itens
+-- ============================================================
+CREATE TABLE IF NOT EXISTS compra_itens (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    compra_id       INT UNSIGNED NOT NULL,
+    material_id     INT UNSIGNED,
+    descricao       VARCHAR(220) NOT NULL,
+    quantidade      DECIMAL(12,3) DEFAULT 1,
+    unidade         VARCHAR(20) DEFAULT 'un',
+    custo_unitario  DECIMAL(12,2) DEFAULT 0,
+    total           DECIMAL(12,2) DEFAULT 0,
+    recebido        TINYINT(1) DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (compra_id) REFERENCES compras(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materiais(id) ON DELETE SET NULL,
+    INDEX idx_compra (compra_id),
+    INDEX idx_material (material_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -840,8 +929,8 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
 SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
 FROM perfis p
-JOIN modulos m ON m.slug IN ('produtos','producao','estoque')
-WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque')
+JOIN modulos m ON m.slug IN ('produtos','producao','estoque','compras')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque','financeiro')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

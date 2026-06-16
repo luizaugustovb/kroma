@@ -121,6 +121,21 @@ $router->post('/financeiro/pagar/novo', 'FinanceiroController@criarPagar');
 $router->post('/financeiro/pagar/:id/baixar', 'FinanceiroController@baixarPagar');
 $router->post('/financeiro/pagar/:id/cancelar', 'FinanceiroController@cancelarPagar');
 
+// Compras e fornecedores
+$router->get('/compras', 'ComprasController@index');
+$router->get('/compras/novo', 'ComprasController@novo');
+$router->post('/compras/novo', 'ComprasController@criar');
+$router->get('/compras/fornecedores', 'ComprasController@fornecedores');
+$router->get('/compras/fornecedores/novo', 'ComprasController@novoFornecedor');
+$router->post('/compras/fornecedores/novo', 'ComprasController@criarFornecedor');
+$router->get('/compras/fornecedores/:id/editar', 'ComprasController@editarFornecedor');
+$router->post('/compras/fornecedores/:id/editar', 'ComprasController@atualizarFornecedor');
+$router->get('/compras/:id', 'ComprasController@ver');
+$router->get('/compras/:id/editar', 'ComprasController@editar');
+$router->post('/compras/:id/editar', 'ComprasController@atualizar');
+$router->post('/compras/:id/status', 'ComprasController@status');
+$router->post('/compras/:id/receber', 'ComprasController@receber');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');
