@@ -23,6 +23,7 @@ cache/
 tmp/
 
 # Backups e dumps
+*.sql
 *.sql.gz
 *.sql.zip
 *.bak

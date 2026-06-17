@@ -37,6 +37,9 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
     <meta name="csrf-token" content="<?= $csrfToken ?>">
     <title><?= htmlspecialchars($titulo) ?> — <?= APP_NAME ?></title>
 
+    <link rel="icon" type="image/png" href="<?= APP_URL ?>/public/assets/img/icone.png">
+    <link rel="shortcut icon" type="image/png" href="<?= APP_URL ?>/public/assets/img/icone.png">
+
     <!-- Bootstrap 5 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <!-- Bootstrap Icons -->
@@ -62,9 +65,9 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
 
         <!-- Logo -->
         <div class="sidebar-brand">
-            <div class="logo-icon">K</div>
+            <img src="<?= APP_URL ?>/public/assets/img/icone.png" alt="KROMA" class="logo-icon-img">
             <div>
-                <div class="logo-text">KROMA PRINT</div>
+                <img src="<?= APP_URL ?>/public/assets/img/nome.png" alt="KROMA PRINT" class="logo-text-img">
                 <div class="logo-sub">Sistema ERP</div>
             </div>
         </div>

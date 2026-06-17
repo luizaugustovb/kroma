@@ -7,7 +7,14 @@
 define('APP_ENV', 'development');
 define('APP_NAME', 'KROMA PRINT ERP');
 define('APP_VERSION', '1.0.0');
-define('APP_URL', 'http://localhost/kroma');
+if (PHP_SAPI === 'cli') {
+    define('APP_URL', 'http://localhost/kroma');
+} else {
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $baseDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+    define('APP_URL', $protocol . '://' . $host . $baseDir);
+}
 define('APP_TIMEZONE', 'America/Sao_Paulo');
 define('APP_LOCALE', 'pt_BR');
 

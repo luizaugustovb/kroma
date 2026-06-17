@@ -16,7 +16,15 @@ class AuthMiddleware
     public static function handle(): void
     {
         if (!Auth::check() || !Auth::verificarSessao()) {
-            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            $uri = $_SERVER['REQUEST_URI'] ?? '';
+            // Rotas de API retornam JSON 401 em vez de redirect
+            if (str_contains($uri, '/api/')) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['error' => 'Unauthenticated']);
+                exit;
+            }
+            $_SESSION['redirect_after_login'] = $uri;
             header('Location: ' . APP_URL . '/login');
             exit;
         }

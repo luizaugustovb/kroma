@@ -13,6 +13,9 @@ $titulo = $titulo ?? 'Login';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($titulo) ?> — <?= APP_NAME ?></title>
 
+    <link rel="icon" type="image/png" href="<?= APP_URL ?>/public/assets/img/icone.png">
+    <link rel="shortcut icon" type="image/png" href="<?= APP_URL ?>/public/assets/img/icone.png">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="<?= APP_URL ?>/public/assets/css/kroma.css">
@@ -118,10 +121,10 @@ $titulo = $titulo ?? 'Login';
 
 <div class="auth-card">
     <div class="auth-logo">
-        <div class="auth-logo-icon">K</div>
+        <img src="<?= APP_URL ?>/public/assets/img/icone.png" alt="KROMA" style="height:48px;width:auto;">
         <div class="auth-logo-text">
-            <div class="brand">KROMA PRINT</div>
-            <div class="sub">Sistema ERP</div>
+            <img src="<?= APP_URL ?>/public/assets/img/nome.png" alt="KROMA PRINT" style="height:22px;width:auto;display:block;">
+            <div class="sub" style="margin-top:4px;">Sistema ERP</div>
         </div>
     </div>
 

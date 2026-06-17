@@ -2,8 +2,11 @@
     <div class="container-fluid px-4 py-5">
         <div class="row align-items-center g-4">
             <div class="col-lg-6">
-                <span class="badge badge-primary mb-3"><i class="bi bi-printer"></i> Comunicação visual completa</span>
-                <h1 class="display-5 fw-bold mb-3" style="color:var(--text-primary)">Impressão, fachadas, DTF e LED com controle de produção.</h1>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <img src="<?= APP_URL ?>/public/assets/img/icone.png" alt="" style="height:24px;width:auto;">
+                    <span class="badge badge-primary mb-0"><i class="bi bi-printer"></i> Comunicação visual completa</span>
+                </div>
+                <h1 class="display-5 fw-bold mb-3" style="color:var(--text-primary)">Impressão, fachadas, DTF e LED com <span style="color:var(--kroma-primary)">controle de produção</span>.</h1>
                 <p class="lead text-secondary mb-4">A KROMA PRINT atende empresas, revendas, eventos e indústrias com orçamento rápido, upload de arquivos e acompanhamento comercial pelo CRM.</p>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="#orcamento" class="btn btn-primary btn-lg"><i class="bi bi-send"></i> Solicitar Orçamento</a>
@@ -11,16 +14,40 @@
                 </div>
             </div>
             <div class="col-lg-6">
-                <div class="landing-card p-4">
-                    <div class="ratio ratio-16x9 rounded overflow-hidden" style="background:linear-gradient(135deg,#272e3f,#00658d);">
-                        <div class="d-flex flex-column justify-content-center p-4 text-white">
-                            <span class="badge badge-info align-self-start mb-3">Painel Operacional</span>
-                            <h2 class="fw-bold">Da venda à produção</h2>
-                            <div class="row g-2 mt-2">
-                                <div class="col-6"><span class="badge badge-success">Arte aprovada</span></div>
-                                <div class="col-6"><span class="badge badge-warning">Produção hoje</span></div>
-                                <div class="col-6"><span class="badge badge-primary">DTF</span></div>
-                                <div class="col-6"><span class="badge badge-info">Fachada ACM</span></div>
+                <div class="landing-card overflow-hidden position-relative">
+                    <div class="d-flex flex-column" style="min-height:380px;">
+                        <div class="px-4 pt-4 pb-3 d-flex align-items-center gap-3 border-bottom" style="border-color:var(--border-color) !important;">
+                            <div class="rounded-2 d-flex align-items-center justify-content-center" style="width:42px;height:42px;background:linear-gradient(135deg,#00AEEF,#EC008C);">
+                                <img src="<?= APP_URL ?>/public/assets/img/icone.png" alt="" style="height:24px;width:auto;filter:brightness(0) invert(1);">
+                            </div>
+                            <div>
+                                <div class="fw-bold" style="font-size:15px;color:var(--text-primary);">Painel Operacional</div>
+                                <div style="font-size:11px;color:var(--text-muted);">KROMA PRINT · Produção</div>
+                            </div>
+                            <div class="ms-auto d-flex gap-1">
+                                <span style="width:12px;height:12px;border-radius:50%;background:#00AEEF;"></span>
+                                <span style="width:12px;height:12px;border-radius:50%;background:#EC008C;"></span>
+                                <span style="width:12px;height:12px;border-radius:50%;background:#FFD100;"></span>
+                                <span style="width:12px;height:12px;border-radius:50%;background:#2D2D2D;"></span>
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 d-flex align-items-center gap-3 border-bottom" style="border-color:var(--border-color) !important;background:#f9fafb;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#00AEEF;color:#fff;">Arte aprovada</span>
+                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#EC008C;color:#fff;">Produção hoje</span>
+                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#FFD100;color:#2D2D2D;">DTF</span>
+                                <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#2D2D2D;color:#fff;">Fachada ACM</span>
+                            </div>
+                        </div>
+                        <div class="px-4 py-3 flex-grow-1 d-flex flex-column justify-content-center" style="background:linear-gradient(180deg,#fff,#f7f9fb);">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#00AEEF,#EC008C);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Da venda</span>
+                                <span style="width:24px;height:2px;background:#ddd;"></span>
+                                <span style="font-size:28px;font-weight:800;color:#2D2D2D;">à produção</span>
+                            </div>
+                            <div style="font-size:13px;color:var(--text-muted);">
+                                <span class="d-inline-flex align-items-center gap-1 me-3"><span style="width:8px;height:8px;border-radius:50%;background:#00AEEF;"></span> 12 OS ativas</span>
+                                <span class="d-inline-flex align-items-center gap-1"><span style="width:8px;height:8px;border-radius:50%;background:#EC008C;"></span> 4 entregas hoje</span>
                             </div>
                         </div>
                     </div>
@@ -133,8 +160,11 @@
 </section>
 
 <footer class="py-4" style="background:var(--bg-sidebar); color:#fff;">
-    <div class="container-fluid px-4 d-flex flex-wrap justify-content-between gap-2">
-        <strong>KROMA PRINT</strong>
+    <div class="container-fluid px-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <img src="<?= APP_URL ?>/public/assets/img/icone.png" alt="KROMA" style="height:28px;width:auto;">
+            <img src="<?= APP_URL ?>/public/assets/img/nome.png" alt="KROMA PRINT" style="height:18px;width:auto;filter:brightness(0) invert(1);">
+        </div>
         <span class="opacity-75">Comunicação visual, impressão digital, DTF, brindes e painéis de LED.</span>
     </div>
 </footer>

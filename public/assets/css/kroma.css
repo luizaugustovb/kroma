@@ -153,11 +153,25 @@ a:hover { color: var(--kroma-primary-light); }
     box-shadow: 0 4px 12px var(--kroma-primary-glow);
 }
 
+.sidebar-brand .logo-icon-img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
 .sidebar-brand .logo-text {
     font-size: 15px;
     font-weight: 700;
     color: var(--text-primary);
     white-space: nowrap;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-brand .logo-text-img {
+    height: 20px;
+    width: auto;
+    display: block;
     transition: opacity 0.2s ease;
 }
 
@@ -170,6 +184,7 @@ a:hover { color: var(--kroma-primary-light); }
 }
 
 .sidebar.collapsed .logo-text,
+.sidebar.collapsed .logo-text-img,
 .sidebar.collapsed .logo-sub,
 .sidebar.collapsed .nav-label,
 .sidebar.collapsed .nav-group-label {

@@ -98,9 +98,12 @@ class AuthController
             $stmt->execute([$_SERVER['REMOTE_ADDR'] ?? '', $usuario['id']]);
         } catch (\Exception $e) {}
 
-        // Redireciona
-        $redirect = $_SESSION['redirect_after_login'] ?? (APP_URL . '/dashboard');
+        // Redireciona (ignora redirect para APIs)
+        $redirect = $_SESSION['redirect_after_login'] ?? '';
         unset($_SESSION['redirect_after_login']);
+        if (empty($redirect) || str_contains($redirect, '/api/')) {
+            $redirect = APP_URL . '/dashboard';
+        }
         header('Location: ' . $redirect);
         exit;
     }
