@@ -161,6 +161,17 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             </div>
             <?php endif; ?>
 
+            <!-- Qualidade -->
+            <?php if (Auth::pode('pops')): ?>
+            <div class="nav-group">
+                <div class="nav-group-label">Qualidade</div>
+                <a href="<?= APP_URL ?>/qualidade" class="nav-item" data-tooltip="Qualidade / POPs">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span class="nav-label">Qualidade / POPs</span>
+                </a>
+            </div>
+            <?php endif; ?>
+
             <!-- Financeiro -->
             <?php if (Auth::pode('financeiro') || Auth::pode('comissoes')): ?>
             <div class="nav-group">

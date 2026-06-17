@@ -563,6 +563,58 @@ CREATE TABLE IF NOT EXISTS processos_produtivos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: qualidade_pops
+-- ============================================================
+CREATE TABLE IF NOT EXISTS qualidade_pops (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    titulo              VARCHAR(200) NOT NULL,
+    setor               VARCHAR(100),
+    categoria           VARCHAR(120),
+    processo_id         INT UNSIGNED,
+    versao              INT DEFAULT 1,
+    status              ENUM('rascunho','em_revisao','aprovado','obsoleto') DEFAULT 'rascunho',
+    objetivo            TEXT,
+    procedimento        TEXT,
+    checklist           TEXT,
+    anexo_url           VARCHAR(300),
+    responsavel_id      INT UNSIGNED,
+    aprovador_id        INT UNSIGNED,
+    aprovado_at         DATETIME,
+    vigencia_inicio     DATE,
+    revisao_prevista    DATE,
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (processo_id) REFERENCES processos_produtivos(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (aprovador_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_setor (setor),
+    INDEX idx_revisao (revisao_prevista)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: qualidade_pop_revisoes
+-- ============================================================
+CREATE TABLE IF NOT EXISTS qualidade_pop_revisoes (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    pop_id          INT UNSIGNED NOT NULL,
+    versao          INT NOT NULL,
+    status          VARCHAR(40),
+    resumo          VARCHAR(255),
+    procedimento    TEXT,
+    checklist       TEXT,
+    usuario_id      INT UNSIGNED,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (pop_id) REFERENCES qualidade_pops(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_pop (pop_id),
+    INDEX idx_versao (versao)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: acabamentos
 -- ============================================================
 CREATE TABLE IF NOT EXISTS acabamentos (
@@ -1086,6 +1138,21 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('auditoria')
 WHERE p.nome IN ('diretor','gerente')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','producao','designer','rh') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente','producao','designer','rh') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('pops')
+WHERE p.nome IN ('diretor','gerente','producao','designer','estoque','rh')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

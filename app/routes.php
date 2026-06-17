@@ -163,6 +163,16 @@ $router->post('/rh/veiculos/novo', 'RhController@criarVeiculo');
 $router->get('/rh/veiculos/:id/editar', 'RhController@editarVeiculo');
 $router->post('/rh/veiculos/:id/editar', 'RhController@atualizarVeiculo');
 
+// Qualidade e POPs
+$router->get('/qualidade', 'QualidadeController@index');
+$router->get('/qualidade/pops/novo', 'QualidadeController@novo');
+$router->post('/qualidade/pops/novo', 'QualidadeController@criar');
+$router->get('/qualidade/pops/:id', 'QualidadeController@ver');
+$router->get('/qualidade/pops/:id/editar', 'QualidadeController@editar');
+$router->post('/qualidade/pops/:id/editar', 'QualidadeController@atualizar');
+$router->post('/qualidade/pops/:id/status', 'QualidadeController@status');
+$router->post('/qualidade/pops/:id/revisar', 'QualidadeController@revisar');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');
