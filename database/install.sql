@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS logs_acoes (
     id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     usuario_id   INT UNSIGNED,
     tabela       VARCHAR(100),
-    acao         ENUM('criar','editar','excluir','visualizar') DEFAULT 'criar',
+    acao         VARCHAR(80) DEFAULT 'criar',
     registro_id  INT UNSIGNED,
     dados_antigos JSON,
     dados_novos  JSON,
@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS logs_acoes (
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_usuario (usuario_id),
     INDEX idx_tabela (tabela),
+    INDEX idx_acao (acao),
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -996,7 +997,8 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('Orçamentos', 'orcamentos', 'bi-file-earmark-text', 'Comercial', 12),
 ('Usuários', 'usuarios', 'bi-person-gear', 'Administrativo', 20),
 ('Perfis e Permissões', 'perfis', 'bi-shield-check', 'Administrativo', 21),
-('Empresa', 'empresa', 'bi-building', 'Administrativo', 22),
+('Auditoria', 'auditoria', 'bi-clipboard-data', 'Administrativo', 22),
+('Empresa', 'empresa', 'bi-building', 'Administrativo', 23),
 ('Produtos', 'produtos', 'bi-box', 'Operacional', 30),
 ('OS / Produção', 'producao', 'bi-gear', 'Operacional', 31),
 ('Estoque', 'estoque', 'bi-archive', 'Operacional', 32),
@@ -1073,6 +1075,17 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('bi')
 WHERE p.nome IN ('diretor','gerente','financeiro')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 0, 0, 0
+FROM perfis p
+JOIN modulos m ON m.slug IN ('auditoria')
+WHERE p.nome IN ('diretor','gerente')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

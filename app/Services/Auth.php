@@ -217,8 +217,8 @@ class Auth
                 $tabela,
                 $acao,
                 $registroId,
-                $dadosAntigos ? json_encode($dadosAntigos) : null,
-                $dadosNovos ? json_encode($dadosNovos) : null,
+                $dadosAntigos ? json_encode($dadosAntigos, JSON_UNESCAPED_UNICODE) : null,
+                $dadosNovos ? json_encode($dadosNovos, JSON_UNESCAPED_UNICODE) : null,
                 $_SERVER['REMOTE_ADDR'] ?? '',
             ]);
         } catch (\Exception $e) {

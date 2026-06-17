@@ -49,6 +49,7 @@ $router->post('/usuarios/:id/toggle-status', 'UsuarioController@toggleStatus');
 $router->get('/perfis', 'PerfilController@index');
 $router->get('/perfis/:id/permissoes', 'PerfilController@permissoes');
 $router->post('/perfis/:id/permissoes', 'PerfilController@salvarPermissoes');
+$router->get('/auditoria', 'AuditoriaController@index');
 
 // Clientes
 $router->get('/clientes', 'ClienteController@index');
