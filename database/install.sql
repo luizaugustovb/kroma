@@ -815,6 +815,39 @@ CREATE TABLE IF NOT EXISTS ordem_servico_etapas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: agenda_instalacoes
+-- ============================================================
+CREATE TABLE IF NOT EXISTS agenda_instalacoes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    cliente_id          INT UNSIGNED,
+    orcamento_id        INT UNSIGNED,
+    ordem_servico_id    INT UNSIGNED,
+    responsavel_id      INT UNSIGNED,
+    titulo              VARCHAR(180) NOT NULL,
+    equipe              VARCHAR(180),
+    endereco            VARCHAR(250),
+    cidade              VARCHAR(100),
+    estado              CHAR(2),
+    data_inicio         DATETIME NOT NULL,
+    data_fim            DATETIME,
+    prioridade          ENUM('baixa','media','alta','urgente') DEFAULT 'media',
+    status              ENUM('agendada','em_rota','em_execucao','concluida','cancelada') DEFAULT 'agendada',
+    checklist           TEXT,
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_status (status),
+    INDEX idx_inicio (data_inicio),
+    INDEX idx_responsavel (responsavel_id),
+    INDEX idx_cliente (cliente_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: materiais
 -- ============================================================
 CREATE TABLE IF NOT EXISTS materiais (
@@ -1214,6 +1247,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('OS / Produção', 'producao', 'bi-gear', 'Operacional', 31),
 ('Estoque', 'estoque', 'bi-archive', 'Operacional', 32),
 ('Compras', 'compras', 'bi-cart', 'Operacional', 33),
+('Agenda de Instalações', 'agenda', 'bi-calendar-check', 'Operacional', 34),
 ('Financeiro', 'financeiro', 'bi-cash-stack', 'Financeiro', 40),
 ('Comissões', 'comissoes', 'bi-percent', 'Financeiro', 41),
 ('Colaboradores', 'colaboradores', 'bi-person-badge', 'RH', 50),
@@ -1271,6 +1305,21 @@ SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 E
 FROM perfis p
 JOIN modulos m ON m.slug IN ('produtos','producao','estoque','compras')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque','financeiro')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','producao') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','producao','instalador') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('agenda')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','producao','instalador')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

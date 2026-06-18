@@ -111,6 +111,12 @@ $router->get('/producao/:id/editar', 'ProducaoController@editar');
 $router->post('/producao/:id/editar', 'ProducaoController@atualizar');
 $router->post('/producao/:id/status', 'ProducaoController@alterarStatus');
 
+// Agenda de equipes e instalações
+$router->get('/agenda', 'AgendaController@index');
+$router->post('/agenda/novo', 'AgendaController@criar');
+$router->post('/agenda/:id/status', 'AgendaController@status');
+$router->post('/agenda/:id/excluir', 'AgendaController@excluir');
+
 // Estoque e materiais
 $router->get('/estoque', 'EstoqueController@index');
 $router->get('/estoque/novo', 'EstoqueController@novo');
