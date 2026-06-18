@@ -20,6 +20,11 @@ class DashboardController
      */
     public function index(): void
     {
+        if (Auth::temPerfil('cliente')) {
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
         $dados = $this->carregarDados();
 
         $titulo    = 'Dashboard';
@@ -37,6 +42,13 @@ class DashboardController
     public function dados(): void
     {
         AuthMiddleware::handle();
+        if (Auth::temPerfil('cliente')) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['error' => 'Acesso restrito']);
+            exit;
+        }
+
         header('Content-Type: application/json');
         echo json_encode($this->carregarDados());
     }

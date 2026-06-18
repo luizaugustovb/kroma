@@ -15,7 +15,7 @@ class AuthController
     public function showLogin(): void
     {
         if (Auth::check()) {
-            header('Location: ' . APP_URL . '/dashboard');
+            header('Location: ' . APP_URL . $this->destinoPadrao(Auth::usuario()['perfil'] ?? null));
             exit;
         }
 
@@ -32,7 +32,7 @@ class AuthController
     public function login(): void
     {
         if (Auth::check()) {
-            header('Location: ' . APP_URL . '/dashboard');
+            header('Location: ' . APP_URL . $this->destinoPadrao(Auth::usuario()['perfil'] ?? null));
             exit;
         }
 
@@ -102,7 +102,7 @@ class AuthController
         $redirect = $_SESSION['redirect_after_login'] ?? '';
         unset($_SESSION['redirect_after_login']);
         if (empty($redirect) || str_contains($redirect, '/api/')) {
-            $redirect = APP_URL . '/dashboard';
+            $redirect = APP_URL . $this->destinoPadrao($usuario['perfil'] ?? null);
         }
         header('Location: ' . $redirect);
         exit;
@@ -174,5 +174,10 @@ class AuthController
         } catch (\Exception $e) {
             return [];
         }
+    }
+
+    private function destinoPadrao(?string $perfil): string
+    {
+        return $perfil === 'cliente' ? '/portal' : '/dashboard';
     }
 }

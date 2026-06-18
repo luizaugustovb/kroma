@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     foto            VARCHAR(300),
     cargo           VARCHAR(100),
     setor           VARCHAR(100),
+    cliente_id      INT UNSIGNED,
     ativo           TINYINT(1) DEFAULT 1,
     primeiro_acesso TINYINT(1) DEFAULT 1,
     ultimo_acesso   DATETIME,
@@ -116,7 +117,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     observacoes     TEXT,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (perfil_id) REFERENCES perfis(id)
+    FOREIGN KEY (perfil_id) REFERENCES perfis(id),
+    INDEX idx_cliente (cliente_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -1201,6 +1203,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('CRM / Kanban', 'crm', 'bi-kanban', 'Comercial', 10),
 ('Clientes', 'clientes', 'bi-people', 'Comercial', 11),
 ('Orçamentos', 'orcamentos', 'bi-file-earmark-text', 'Comercial', 12),
+('Portal do Cliente', 'portal', 'bi-person-workspace', 'Cliente', 13),
 ('Usuários', 'usuarios', 'bi-person-gear', 'Administrativo', 20),
 ('Perfis e Permissões', 'perfis', 'bi-shield-check', 'Administrativo', 21),
 ('Auditoria', 'auditoria', 'bi-clipboard-data', 'Administrativo', 22),
@@ -1240,6 +1243,21 @@ SELECT p.id, m.slug, 1, 1, 1, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('dashboard','crm','clientes','orcamentos')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao') THEN 1 ELSE 0 END,
+       0
+FROM perfis p
+JOIN modulos m ON m.slug IN ('portal')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','cliente')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

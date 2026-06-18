@@ -10,6 +10,7 @@ $csrfToken = Auth::csrfToken();
                 <th>Usuário</th>
                 <th>Perfil</th>
                 <th>Setor</th>
+                <th>Cliente</th>
                 <th>Contato</th>
                 <th>Último Acesso</th>
                 <th>Status</th>
@@ -30,6 +31,13 @@ $csrfToken = Auth::csrfToken();
                 </td>
                 <td><span class="badge badge-primary"><?= htmlspecialchars($u['perfil_label'] ?? '-') ?></span></td>
                 <td><?= htmlspecialchars($u['setor'] ?? '-') ?></td>
+                <td>
+                    <?php if (!empty($u['cliente_nome'])): ?>
+                        <span class="badge badge-info"><?= htmlspecialchars($u['cliente_nome']) ?></span>
+                    <?php else: ?>
+                        <span class="badge badge-secondary">Sem vínculo</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= htmlspecialchars($u['whatsapp'] ?: ($u['telefone'] ?? '-')) ?></td>
                 <td><?= !empty($u['ultimo_acesso']) ? date('d/m/Y H:i', strtotime($u['ultimo_acesso'])) : '-' ?></td>
                 <td>

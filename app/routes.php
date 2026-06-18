@@ -33,6 +33,10 @@ $router->get('/dashboard', 'DashboardController@index');
 $router->get('/dashboard/dados', 'DashboardController@dados');
 $router->get('/alertas', 'AlertaController@index');
 
+// Portal do Cliente
+$router->get('/portal', 'PortalController@index');
+$router->post('/portal/solicitar-orcamento', 'PortalController@solicitarOrcamento');
+
 // BI Executivo
 $router->get('/bi', 'BiController@index');
 $router->get('/ia', 'IaController@index');

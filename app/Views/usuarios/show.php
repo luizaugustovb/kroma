@@ -21,6 +21,16 @@
                         <tr><th>WhatsApp</th><td><?= htmlspecialchars($usuario['whatsapp'] ?? '-') ?></td></tr>
                         <tr><th>Cargo</th><td><?= htmlspecialchars($usuario['cargo'] ?? '-') ?></td></tr>
                         <tr><th>Setor</th><td><?= htmlspecialchars($usuario['setor'] ?? '-') ?></td></tr>
+                        <tr>
+                            <th>Cliente vinculado</th>
+                            <td>
+                                <?php if (!empty($usuario['cliente_nome'])): ?>
+                                    <span class="badge badge-info"><?= htmlspecialchars($usuario['cliente_nome']) ?></span>
+                                <?php else: ?>
+                                    <span class="badge badge-secondary">Sem vínculo</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
                         <tr><th>Último acesso</th><td><?= !empty($usuario['ultimo_acesso']) ? date('d/m/Y H:i', strtotime($usuario['ultimo_acesso'])) : '-' ?></td></tr>
                         <tr><th>Observações</th><td><?= nl2br(htmlspecialchars($usuario['observacoes'] ?? '-')) ?></td></tr>
                     </tbody>

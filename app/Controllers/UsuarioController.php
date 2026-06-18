@@ -21,8 +21,9 @@ class UsuarioController
 
         try {
             $stmt = db()->query(
-                "SELECT u.*, p.label AS perfil_label FROM usuarios u
+                "SELECT u.*, p.label AS perfil_label, c.nome AS cliente_nome FROM usuarios u
                  JOIN perfis p ON p.id = u.perfil_id
+                 LEFT JOIN clientes c ON c.id = u.cliente_id
                  ORDER BY u.nome"
             );
             $usuarios = $stmt->fetchAll();
@@ -44,6 +45,7 @@ class UsuarioController
         AuthMiddleware::requerPerfil(['administrador', 'diretor']);
         $usuario  = [];
         $perfis   = $this->getPerfis();
+        $clientes = $this->getClientes();
         $titulo   = 'Novo Usuário';
         $breadcrumbs = [['label' => 'Usuários', 'url' => '/usuarios'], ['label' => 'Novo', 'url' => '']];
 
@@ -138,6 +140,7 @@ class UsuarioController
         }
 
         $perfis      = $this->getPerfis();
+        $clientes    = $this->getClientes();
         $titulo      = 'Editar Usuário';
         $breadcrumbs = [['label' => 'Usuários', 'url' => '/usuarios'], ['label' => $usuario['nome'], 'url' => '']];
 
@@ -302,7 +305,12 @@ class UsuarioController
     private function buscarPorId(string $id): ?array
     {
         try {
-            $stmt = db()->prepare("SELECT * FROM usuarios WHERE id = ?");
+            $stmt = db()->prepare(
+                "SELECT u.*, c.nome AS cliente_nome
+                 FROM usuarios u
+                 LEFT JOIN clientes c ON c.id = u.cliente_id
+                 WHERE u.id = ?"
+            );
             $stmt->execute([$id]);
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) { return null; }
@@ -312,6 +320,13 @@ class UsuarioController
     {
         try {
             return db()->query("SELECT * FROM perfis WHERE ativo = 1 ORDER BY nivel")->fetchAll();
+        } catch (\Exception $e) { return []; }
+    }
+
+    private function getClientes(): array
+    {
+        try {
+            return db()->query("SELECT id, nome, email, whatsapp FROM clientes WHERE status = 'ativo' ORDER BY nome LIMIT 500")->fetchAll();
         } catch (\Exception $e) { return []; }
     }
 
@@ -325,6 +340,7 @@ class UsuarioController
             'whatsapp'   => $_POST['whatsapp'] ?? '',
             'cargo'      => trim($_POST['cargo'] ?? ''),
             'setor'      => trim($_POST['setor'] ?? ''),
+            'cliente_id' => !empty($_POST['cliente_id']) ? (int)$_POST['cliente_id'] : null,
             'ativo'      => isset($_POST['ativo']) ? 1 : 0,
             'observacoes' => trim($_POST['observacoes'] ?? ''),
         ];

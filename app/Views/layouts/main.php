@@ -17,6 +17,7 @@ $csrfToken  = Auth::csrfToken();
 $titulo     = $titulo ?? 'Dashboard';
 $subtitulo  = $subtitulo ?? '';
 $breadcrumbs = $breadcrumbs ?? [];
+$homeUrl = Auth::pode('dashboard') ? '/dashboard' : (Auth::pode('portal') ? '/portal' : '/perfil');
 
 // Alertas
 $notifCount = 0;
@@ -75,6 +76,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
         <nav class="sidebar-nav" id="sidebarNav">
 
             <!-- Principal -->
+            <?php if (Auth::pode('dashboard')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Principal</div>
                 <a href="<?= APP_URL ?>/dashboard" class="nav-item" data-tooltip="Dashboard">
@@ -82,6 +84,18 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                     <span class="nav-label">Dashboard</span>
                 </a>
             </div>
+            <?php endif; ?>
+
+            <!-- Cliente -->
+            <?php if (Auth::pode('portal')): ?>
+            <div class="nav-group">
+                <div class="nav-group-label">Cliente</div>
+                <a href="<?= APP_URL ?>/portal" class="nav-item" data-tooltip="Portal do Cliente">
+                    <i class="bi bi-person-workspace"></i>
+                    <span class="nav-label">Portal do Cliente</span>
+                </a>
+            </div>
+            <?php endif; ?>
 
             <!-- Comercial -->
             <?php if (Auth::pode('crm') || Auth::pode('clientes') || Auth::pode('orcamentos')): ?>
@@ -318,7 +332,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
 
             <!-- Breadcrumb -->
             <div class="topbar-breadcrumb">
-                <a href="<?= APP_URL ?>/dashboard"><i class="bi bi-house"></i></a>
+                <a href="<?= APP_URL . $homeUrl ?>"><i class="bi bi-house"></i></a>
                 <?php foreach ($breadcrumbs as $crumb): ?>
                     <i class="bi bi-chevron-right" style="font-size:10px"></i>
                     <?php if (!empty($crumb['url'])): ?>
@@ -341,17 +355,21 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 </a>
 
                 <!-- Notificações -->
+                <?php if (Auth::pode('alertas')): ?>
                 <a href="<?= APP_URL ?>/alertas" class="topbar-btn" id="notif-btn" data-bs-toggle="tooltip" title="Central de Alertas">
                     <i class="bi bi-bell"></i>
                     <?php if ($notifCount > 0): ?>
                     <span class="badge" id="notif-badge"><?= $notifCount ?></span>
                     <?php endif; ?>
                 </a>
+                <?php endif; ?>
 
                 <!-- WhatsApp -->
+                <?php if (Auth::pode('whatsapp')): ?>
                 <a href="<?= APP_URL ?>/whatsapp" class="topbar-btn" data-bs-toggle="tooltip" title="WhatsApp">
                     <i class="bi bi-whatsapp"></i>
                 </a>
+                <?php endif; ?>
             </div>
         </header>
 

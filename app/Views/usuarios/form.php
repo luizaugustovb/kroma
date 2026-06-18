@@ -51,6 +51,17 @@ $action = $isEdicao ? APP_URL . '/usuarios/' . $usuario['id'] . '/editar' : APP_
                             <input class="form-control" name="setor" value="<?= htmlspecialchars($usuario['setor'] ?? '') ?>">
                         </div>
                         <div class="col-md-6">
+                            <label class="form-label">Cliente vinculado</label>
+                            <select class="form-select" name="cliente_id">
+                                <option value="">-- Sem cliente vinculado --</option>
+                                <?php foreach (($clientes ?? []) as $cliente): ?>
+                                <option value="<?= $cliente['id'] ?>" <?= (string)($usuario['cliente_id'] ?? '') === (string)$cliente['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($cliente['nome']) ?><?= !empty($cliente['email']) ? ' - ' . htmlspecialchars($cliente['email']) : '' ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
                             <label class="form-label"><?= $isEdicao ? 'Nova Senha' : 'Senha *' ?></label>
                             <input class="form-control" type="password" name="senha" <?= $isEdicao ? '' : 'required' ?> autocomplete="new-password">
                             <div class="form-text"><?= $isEdicao ? 'Preencha apenas se quiser trocar.' : 'Mínimo de 8 caracteres.' ?></div>
