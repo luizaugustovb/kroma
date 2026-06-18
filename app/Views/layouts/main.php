@@ -172,13 +172,20 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Comunicação -->
-            <?php if (Auth::pode('chamados') || Auth::pode('whatsapp')): ?>
+            <?php if (Auth::pode('chamados') || Auth::pode('whatsapp') || Auth::pode('chat')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Comunicação</div>
                 <?php if (Auth::pode('chamados')): ?>
                 <a href="<?= APP_URL ?>/chamados" class="nav-item" data-tooltip="Chamados Internos">
                     <i class="bi bi-ticket-detailed"></i>
                     <span class="nav-label">Chamados Internos</span>
+                </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('chat')): ?>
+                <a href="<?= APP_URL ?>/chat" class="nav-item" data-tooltip="Chat Interno">
+                    <i class="bi bi-chat-dots"></i>
+                    <span class="nav-label">Chat Interno</span>
                 </a>
                 <?php endif; ?>
 

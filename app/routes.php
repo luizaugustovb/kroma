@@ -190,6 +190,12 @@ $router->post('/chamados/:id/comentarios', 'ChamadoController@comentar');
 $router->get('/whatsapp', 'WhatsAppController@index');
 $router->post('/whatsapp/enviar', 'WhatsAppController@enviar');
 
+// Chat interno
+$router->get('/chat', 'ChatController@index');
+$router->get('/chat/canais/:id', 'ChatController@index');
+$router->post('/chat/canais/novo', 'ChatController@criarCanal');
+$router->post('/chat/canais/:id/mensagens', 'ChatController@enviarMensagem');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

@@ -1134,6 +1134,48 @@ CREATE TABLE IF NOT EXISTS ia_respostas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: chat_canais
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_canais (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    nome                VARCHAR(160) NOT NULL,
+    tipo                ENUM('geral','setor','cliente','ordem_servico','privado') DEFAULT 'geral',
+    setor               VARCHAR(100),
+    cliente_id          INT UNSIGNED,
+    ordem_servico_id    INT UNSIGNED,
+    criado_por_id       INT UNSIGNED,
+    status              ENUM('ativo','arquivado') DEFAULT 'ativo',
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE SET NULL,
+    FOREIGN KEY (criado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_tipo (tipo),
+    INDEX idx_status (status),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_os (ordem_servico_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: chat_mensagens
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chat_mensagens (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    canal_id        INT UNSIGNED NOT NULL,
+    usuario_id      INT UNSIGNED,
+    mensagem        TEXT NOT NULL,
+    anexo_url       VARCHAR(300),
+    mencoes         VARCHAR(300),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    edited_at       DATETIME,
+    FOREIGN KEY (canal_id) REFERENCES chat_canais(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_canal (canal_id),
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -1279,6 +1321,21 @@ SELECT p.id, m.slug,
 FROM perfis p
 JOIN modulos m ON m.slug IN ('ia')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','financeiro','rh')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh','instalador') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('chat')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh','instalador')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
