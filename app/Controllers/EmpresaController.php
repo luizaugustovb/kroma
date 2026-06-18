@@ -51,6 +51,8 @@ class EmpresaController
             'slogan' => trim($_POST['slogan'] ?? ''),
             'condicoes_orcamento' => trim($_POST['condicoes_orcamento'] ?? ''),
             'token_whatsapp' => trim($_POST['token_whatsapp'] ?? ''),
+            'endpoint_whatsapp' => trim($_POST['endpoint_whatsapp'] ?? ''),
+            'modo_whatsapp' => in_array($_POST['modo_whatsapp'] ?? 'simulado', ['simulado','producao'], true) ? $_POST['modo_whatsapp'] : 'simulado',
             'chave_openai' => trim($_POST['chave_openai'] ?? ''),
             'chave_gemini' => trim($_POST['chave_gemini'] ?? ''),
             'chave_asaas' => trim($_POST['chave_asaas'] ?? ''),

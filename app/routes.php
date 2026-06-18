@@ -184,6 +184,10 @@ $router->post('/chamados/:id/editar', 'ChamadoController@atualizar');
 $router->post('/chamados/:id/status', 'ChamadoController@status');
 $router->post('/chamados/:id/comentarios', 'ChamadoController@comentar');
 
+// WhatsApp
+$router->get('/whatsapp', 'WhatsAppController@index');
+$router->post('/whatsapp/enviar', 'WhatsAppController@enviar');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

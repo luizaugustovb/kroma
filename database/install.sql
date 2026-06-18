@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS empresas (
     condicoes_orcamento TEXT,
     validade_orcamento  INT DEFAULT 7,
     token_whatsapp  VARCHAR(300),
+    endpoint_whatsapp VARCHAR(300),
+    modo_whatsapp   ENUM('simulado','producao') DEFAULT 'simulado',
     chave_openai    VARCHAR(300),
     chave_gemini    VARCHAR(300),
     chave_asaas     VARCHAR(300),
@@ -1076,6 +1078,31 @@ CREATE TABLE IF NOT EXISTS chamado_comentarios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: whatsapp_envios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS whatsapp_envios (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    cliente_id      INT UNSIGNED,
+    usuario_id      INT UNSIGNED,
+    telefone        VARCHAR(30) NOT NULL,
+    mensagem        TEXT NOT NULL,
+    tipo            ENUM('manual','orcamento','producao','financeiro','campanha','sistema') DEFAULT 'manual',
+    origem          VARCHAR(120),
+    status          ENUM('pendente','enviado','erro','simulado') DEFAULT 'pendente',
+    http_status     INT,
+    resposta        TEXT,
+    erro            TEXT,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_status (status),
+    INDEX idx_tipo (tipo),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -1205,6 +1232,21 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('alertas')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh','instalador')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','financeiro','producao') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','financeiro','producao') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('whatsapp')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','financeiro','producao')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

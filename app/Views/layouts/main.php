@@ -172,13 +172,22 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Comunicação -->
-            <?php if (Auth::pode('chamados')): ?>
+            <?php if (Auth::pode('chamados') || Auth::pode('whatsapp')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Comunicação</div>
+                <?php if (Auth::pode('chamados')): ?>
                 <a href="<?= APP_URL ?>/chamados" class="nav-item" data-tooltip="Chamados Internos">
                     <i class="bi bi-ticket-detailed"></i>
                     <span class="nav-label">Chamados Internos</span>
                 </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('whatsapp')): ?>
+                <a href="<?= APP_URL ?>/whatsapp" class="nav-item" data-tooltip="WhatsApp">
+                    <i class="bi bi-whatsapp"></i>
+                    <span class="nav-label">WhatsApp</span>
+                </a>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
 
@@ -326,7 +335,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 </a>
 
                 <!-- WhatsApp -->
-                <a href="#" class="topbar-btn" data-bs-toggle="tooltip" title="WhatsApp">
+                <a href="<?= APP_URL ?>/whatsapp" class="topbar-btn" data-bs-toggle="tooltip" title="WhatsApp">
                     <i class="bi bi-whatsapp"></i>
                 </a>
             </div>

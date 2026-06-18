@@ -89,6 +89,13 @@ $empresa = $empresa ?? [];
                 <div class="p-3">
                     <label class="form-label">Token WhatsApp Viicio</label>
                     <input class="form-control mb-3" name="token_whatsapp" value="<?= htmlspecialchars($empresa['token_whatsapp'] ?? '') ?>">
+                    <label class="form-label">Endpoint WhatsApp Viicio</label>
+                    <input class="form-control mb-3" name="endpoint_whatsapp" value="<?= htmlspecialchars($empresa['endpoint_whatsapp'] ?? '') ?>" placeholder="https://api.viicio.com/...">
+                    <label class="form-label">Modo WhatsApp</label>
+                    <select class="form-select mb-3" name="modo_whatsapp">
+                        <option value="simulado" <?= ($empresa['modo_whatsapp'] ?? 'simulado') === 'simulado' ? 'selected' : '' ?>>Simulado</option>
+                        <option value="producao" <?= ($empresa['modo_whatsapp'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção</option>
+                    </select>
                     <label class="form-label">Chave OpenAI</label>
                     <input class="form-control mb-3" name="chave_openai" value="<?= htmlspecialchars($empresa['chave_openai'] ?? '') ?>">
                     <label class="form-label">Chave Gemini</label>
