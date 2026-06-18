@@ -31,6 +31,7 @@ $router->post('/install', 'InstallController@instalar');
 // Dashboard
 $router->get('/dashboard', 'DashboardController@index');
 $router->get('/dashboard/dados', 'DashboardController@dados');
+$router->get('/alertas', 'AlertaController@index');
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');

@@ -164,7 +164,14 @@ const KROMA = {
                 .then(r => r.json())
                 .then(data => {
                     this.count = data.count || 0;
-                    const badge = document.querySelector('#notif-badge');
+                    const btn = document.querySelector('#notif-btn');
+                    let badge = document.querySelector('#notif-badge');
+                    if (!badge && btn && this.count > 0) {
+                        badge = document.createElement('span');
+                        badge.className = 'badge';
+                        badge.id = 'notif-badge';
+                        btn.appendChild(badge);
+                    }
                     if (badge) {
                         badge.textContent = this.count;
                         badge.style.display = this.count > 0 ? 'block' : 'none';

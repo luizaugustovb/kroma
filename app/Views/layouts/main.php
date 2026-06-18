@@ -10,6 +10,7 @@
  */
 
 use App\Services\Auth;
+use App\Services\AlertasService;
 
 $usuario    = Auth::usuario();
 $csrfToken  = Auth::csrfToken();
@@ -17,12 +18,10 @@ $titulo     = $titulo ?? 'Dashboard';
 $subtitulo  = $subtitulo ?? '';
 $breadcrumbs = $breadcrumbs ?? [];
 
-// Notificações
+// Alertas
 $notifCount = 0;
 try {
-    $stmtNotif = db()->prepare("SELECT COUNT(*) FROM notificacoes WHERE usuario_id = ? AND lida = 0");
-    $stmtNotif->execute([Auth::id()]);
-    $notifCount = (int)$stmtNotif->fetchColumn();
+    $notifCount = (new AlertasService())->total();
 } catch (Exception $e) {}
 
 // Gera iniciais do nome para avatar
@@ -205,13 +204,22 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Inteligência -->
-            <?php if (Auth::pode('bi')): ?>
+            <?php if (Auth::pode('bi') || Auth::pode('alertas')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Inteligência</div>
+                <?php if (Auth::pode('alertas')): ?>
+                <a href="<?= APP_URL ?>/alertas" class="nav-item" data-tooltip="Central de Alertas">
+                    <i class="bi bi-bell"></i>
+                    <span class="nav-label">Central de Alertas</span>
+                </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('bi')): ?>
                 <a href="<?= APP_URL ?>/bi" class="nav-item" data-tooltip="BI Executivo">
                     <i class="bi bi-bar-chart-line"></i>
                     <span class="nav-label">BI Executivo</span>
                 </a>
+                <?php endif; ?>
             </div>
             <?php endif; ?>
 
@@ -310,7 +318,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 </a>
 
                 <!-- Notificações -->
-                <a href="#" class="topbar-btn" id="notif-btn">
+                <a href="<?= APP_URL ?>/alertas" class="topbar-btn" id="notif-btn" data-bs-toggle="tooltip" title="Central de Alertas">
                     <i class="bi bi-bell"></i>
                     <?php if ($notifCount > 0): ?>
                     <span class="badge" id="notif-badge"><?= $notifCount ?></span>

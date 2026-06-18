@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Middleware\AuthMiddleware;
+use App\Services\AlertasService;
 
 class ApiController
 {
@@ -33,7 +34,12 @@ class ApiController
 
     public function notificacoesCount(): void
     {
-        $this->json(['count' => 0]);
+        $resumo = (new AlertasService())->resumo();
+        $this->json([
+            'count' => $resumo['total'],
+            'criticos' => $resumo['criticos'],
+            'atencao' => $resumo['atencao'],
+        ]);
     }
 
     private function query(string $sql): array
