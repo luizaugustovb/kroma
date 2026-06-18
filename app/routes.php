@@ -132,6 +132,14 @@ $router->post('/financeiro/pagar/novo', 'FinanceiroController@criarPagar');
 $router->post('/financeiro/pagar/:id/baixar', 'FinanceiroController@baixarPagar');
 $router->post('/financeiro/pagar/:id/cancelar', 'FinanceiroController@cancelarPagar');
 
+// Comissões
+$router->get('/comissoes', 'ComissaoController@index');
+$router->post('/comissoes/sincronizar', 'ComissaoController@sincronizar');
+$router->post('/comissoes/:id/liberar', 'ComissaoController@liberar');
+$router->post('/comissoes/:id/pagar', 'ComissaoController@pagar');
+$router->post('/comissoes/:id/bloquear', 'ComissaoController@bloquear');
+$router->post('/comissoes/:id/cancelar', 'ComissaoController@cancelar');
+
 // Compras e fornecedores
 $router->get('/compras', 'ComprasController@index');
 $router->get('/compras/novo', 'ComprasController@novo');

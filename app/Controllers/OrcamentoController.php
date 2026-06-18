@@ -462,10 +462,16 @@ class OrcamentoController
         $base = (float)$orcamento['total'];
         $percentual = (float)$orcamento['comissao_percent'];
         $valor = round($base * ($percentual / 100), 2);
+        $margemMinima = $this->margemMinima();
+        $margemReal = $base > 0 ? (((float)$orcamento['lucro_previsto'] / $base) * 100) : 0;
+        $status = $margemReal < $margemMinima ? 'bloqueada' : 'prevista';
+        $observacaoComissao = $status === 'bloqueada'
+            ? 'Comissao bloqueada: margem abaixo do minimo configurado.'
+            : 'Comissao gerada na aprovacao do orcamento.';
         $pdo->prepare(
             "INSERT INTO comissoes (orcamento_id, usuario_id, base_calculo, percentual, valor, status, observacoes, created_at)
-             VALUES (?, ?, ?, ?, ?, 'prevista', 'Comissão gerada na aprovação do orçamento.', NOW())"
-        )->execute([$orcamento['id'], $orcamento['vendedor_id'], $base, $percentual, $valor]);
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())"
+        )->execute([$orcamento['id'], $orcamento['vendedor_id'], $base, $percentual, $valor, $status, $observacaoComissao]);
     }
 
     private function criarOrdemServico(array $orcamento): int
@@ -756,6 +762,17 @@ class OrcamentoController
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) {
             return null;
+        }
+    }
+
+    private function margemMinima(): float
+    {
+        try {
+            $stmt = db()->prepare("SELECT valor FROM configuracoes WHERE chave = 'margem_minima' LIMIT 1");
+            $stmt->execute();
+            return (float)($stmt->fetchColumn() ?: 30);
+        } catch (\Exception $e) {
+            return 30.0;
         }
     }
 
