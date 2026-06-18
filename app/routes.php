@@ -35,6 +35,8 @@ $router->get('/alertas', 'AlertaController@index');
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');
+$router->get('/ia', 'IaController@index');
+$router->post('/ia/gerar', 'IaController@gerar');
 
 // Usuários
 $router->get('/usuarios', 'UsuarioController@index');

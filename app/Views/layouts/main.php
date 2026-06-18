@@ -213,13 +213,20 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Inteligência -->
-            <?php if (Auth::pode('bi') || Auth::pode('alertas')): ?>
+            <?php if (Auth::pode('bi') || Auth::pode('alertas') || Auth::pode('ia')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Inteligência</div>
                 <?php if (Auth::pode('alertas')): ?>
                 <a href="<?= APP_URL ?>/alertas" class="nav-item" data-tooltip="Central de Alertas">
                     <i class="bi bi-bell"></i>
                     <span class="nav-label">Central de Alertas</span>
+                </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('ia')): ?>
+                <a href="<?= APP_URL ?>/ia" class="nav-item" data-tooltip="Central de IA">
+                    <i class="bi bi-stars"></i>
+                    <span class="nav-label">Central de IA</span>
                 </a>
                 <?php endif; ?>
 

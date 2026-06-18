@@ -100,6 +100,22 @@ $empresa = $empresa ?? [];
                     <input class="form-control mb-3" name="chave_openai" value="<?= htmlspecialchars($empresa['chave_openai'] ?? '') ?>">
                     <label class="form-label">Chave Gemini</label>
                     <input class="form-control mb-3" name="chave_gemini" value="<?= htmlspecialchars($empresa['chave_gemini'] ?? '') ?>">
+                    <label class="form-label">Modo IA</label>
+                    <select class="form-select mb-3" name="modo_ia">
+                        <option value="simulado" <?= ($empresa['modo_ia'] ?? 'simulado') === 'simulado' ? 'selected' : '' ?>>Simulado</option>
+                        <option value="producao" <?= ($empresa['modo_ia'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção</option>
+                    </select>
+                    <label class="form-label">Provedor IA</label>
+                    <select class="form-select mb-3" name="provedor_ia">
+                        <option value="openai" <?= ($empresa['provedor_ia'] ?? 'openai') === 'openai' ? 'selected' : '' ?>>OpenAI</option>
+                        <option value="gemini" <?= ($empresa['provedor_ia'] ?? '') === 'gemini' ? 'selected' : '' ?>>Gemini</option>
+                    </select>
+                    <label class="form-label">Modelo IA</label>
+                    <input class="form-control mb-3" name="modelo_ia" value="<?= htmlspecialchars($empresa['modelo_ia'] ?? 'gpt-5.5') ?>">
+                    <label class="form-label">Limite diário IA</label>
+                    <input class="form-control mb-3" type="number" min="1" name="limite_ia_diario" value="<?= (int)($empresa['limite_ia_diario'] ?? 100) ?>">
+                    <label class="form-label">Prompt padrão IA</label>
+                    <textarea class="form-control mb-3" name="prompt_padrao_ia" rows="3" placeholder="Tom, regras comerciais e limites da IA"><?= htmlspecialchars($empresa['prompt_padrao_ia'] ?? '') ?></textarea>
                     <label class="form-label">Chave Asaas</label>
                     <input class="form-control mb-3" name="chave_asaas" value="<?= htmlspecialchars($empresa['chave_asaas'] ?? '') ?>">
                     <label class="form-label">Ambiente Asaas</label>

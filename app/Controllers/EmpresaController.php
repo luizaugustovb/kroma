@@ -55,6 +55,11 @@ class EmpresaController
             'modo_whatsapp' => in_array($_POST['modo_whatsapp'] ?? 'simulado', ['simulado','producao'], true) ? $_POST['modo_whatsapp'] : 'simulado',
             'chave_openai' => trim($_POST['chave_openai'] ?? ''),
             'chave_gemini' => trim($_POST['chave_gemini'] ?? ''),
+            'modo_ia' => in_array($_POST['modo_ia'] ?? 'simulado', ['simulado','producao'], true) ? $_POST['modo_ia'] : 'simulado',
+            'provedor_ia' => in_array($_POST['provedor_ia'] ?? 'openai', ['openai','gemini'], true) ? $_POST['provedor_ia'] : 'openai',
+            'modelo_ia' => trim($_POST['modelo_ia'] ?? 'gpt-5.5') ?: 'gpt-5.5',
+            'prompt_padrao_ia' => trim($_POST['prompt_padrao_ia'] ?? ''),
+            'limite_ia_diario' => max(1, (int)($_POST['limite_ia_diario'] ?? 100)),
             'chave_asaas' => trim($_POST['chave_asaas'] ?? ''),
             'ambiente_asaas' => $_POST['ambiente_asaas'] ?? 'sandbox',
         ];

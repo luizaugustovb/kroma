@@ -42,6 +42,11 @@ CREATE TABLE IF NOT EXISTS empresas (
     modo_whatsapp   ENUM('simulado','producao') DEFAULT 'simulado',
     chave_openai    VARCHAR(300),
     chave_gemini    VARCHAR(300),
+    modo_ia         ENUM('simulado','producao') DEFAULT 'simulado',
+    provedor_ia     ENUM('openai','gemini') DEFAULT 'openai',
+    modelo_ia       VARCHAR(100) DEFAULT 'gpt-5.5',
+    prompt_padrao_ia TEXT,
+    limite_ia_diario INT DEFAULT 100,
     chave_asaas     VARCHAR(300),
     ambiente_asaas  ENUM('sandbox','producao') DEFAULT 'sandbox',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -1103,6 +1108,32 @@ CREATE TABLE IF NOT EXISTS whatsapp_envios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: ia_respostas
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ia_respostas (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    usuario_id      INT UNSIGNED,
+    cliente_id      INT UNSIGNED,
+    provedor        ENUM('openai','gemini') DEFAULT 'openai',
+    modelo          VARCHAR(100),
+    contexto        ENUM('atendimento','orcamento','produto','margem','followup','operacional','livre') DEFAULT 'livre',
+    prompt          TEXT NOT NULL,
+    resposta        MEDIUMTEXT,
+    status          ENUM('simulado','concluido','erro') DEFAULT 'simulado',
+    tokens_entrada  INT DEFAULT 0,
+    tokens_saida    INT DEFAULT 0,
+    erro            TEXT,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_cliente (cliente_id),
+    INDEX idx_status (status),
+    INDEX idx_contexto (contexto),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -1142,6 +1173,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('Equipamentos', 'equipamentos', 'bi-tools', 'RH', 51),
 ('Central de Alertas', 'alertas', 'bi-bell', 'Inteligência', 59),
 ('BI Executivo', 'bi', 'bi-bar-chart-line', 'Inteligência', 60),
+('Central de IA', 'ia', 'bi-stars', 'Inteligência', 61),
 ('POPs e Qualidade', 'pops', 'bi-clipboard-check', 'Qualidade', 70),
 ('Painéis de LED', 'led', 'bi-display', 'LED', 80),
 ('Chamados Internos', 'chamados', 'bi-ticket-detailed', 'Comunicação', 85),
@@ -1232,6 +1264,21 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('alertas')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh','instalador')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','financeiro','rh') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('ia')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','financeiro','rh')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
