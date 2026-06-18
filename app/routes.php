@@ -173,6 +173,16 @@ $router->post('/qualidade/pops/:id/editar', 'QualidadeController@atualizar');
 $router->post('/qualidade/pops/:id/status', 'QualidadeController@status');
 $router->post('/qualidade/pops/:id/revisar', 'QualidadeController@revisar');
 
+// Chamados internos
+$router->get('/chamados', 'ChamadoController@index');
+$router->get('/chamados/novo', 'ChamadoController@novo');
+$router->post('/chamados/novo', 'ChamadoController@criar');
+$router->get('/chamados/:id', 'ChamadoController@ver');
+$router->get('/chamados/:id/editar', 'ChamadoController@editar');
+$router->post('/chamados/:id/editar', 'ChamadoController@atualizar');
+$router->post('/chamados/:id/status', 'ChamadoController@status');
+$router->post('/chamados/:id/comentarios', 'ChamadoController@comentar');
+
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');

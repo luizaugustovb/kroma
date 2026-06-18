@@ -172,6 +172,17 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             </div>
             <?php endif; ?>
 
+            <!-- Comunicação -->
+            <?php if (Auth::pode('chamados')): ?>
+            <div class="nav-group">
+                <div class="nav-group-label">Comunicação</div>
+                <a href="<?= APP_URL ?>/chamados" class="nav-item" data-tooltip="Chamados Internos">
+                    <i class="bi bi-ticket-detailed"></i>
+                    <span class="nav-label">Chamados Internos</span>
+                </a>
+            </div>
+            <?php endif; ?>
+
             <!-- Financeiro -->
             <?php if (Auth::pode('financeiro') || Auth::pode('comissoes')): ?>
             <div class="nav-group">

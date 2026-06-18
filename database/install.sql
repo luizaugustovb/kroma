@@ -1022,6 +1022,60 @@ CREATE TABLE IF NOT EXISTS compra_itens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: chamados
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chamados (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    titulo              VARCHAR(200) NOT NULL,
+    descricao           TEXT,
+    setor               VARCHAR(100),
+    prioridade          ENUM('baixa','media','alta','urgente') DEFAULT 'media',
+    status              ENUM('aberto','em_andamento','aguardando','concluido','cancelado') DEFAULT 'aberto',
+    solicitante_id      INT UNSIGNED,
+    responsavel_id      INT UNSIGNED,
+    cliente_id          INT UNSIGNED,
+    orcamento_id        INT UNSIGNED,
+    ordem_servico_id    INT UNSIGNED,
+    compra_id           INT UNSIGNED,
+    prazo               DATETIME,
+    concluido_at        DATETIME,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (solicitante_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+    FOREIGN KEY (orcamento_id) REFERENCES orcamentos(id) ON DELETE SET NULL,
+    FOREIGN KEY (ordem_servico_id) REFERENCES ordem_servicos(id) ON DELETE SET NULL,
+    FOREIGN KEY (compra_id) REFERENCES compras(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_status (status),
+    INDEX idx_prioridade (prioridade),
+    INDEX idx_setor (setor),
+    INDEX idx_responsavel (responsavel_id),
+    INDEX idx_prazo (prazo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: chamado_comentarios
+-- ============================================================
+CREATE TABLE IF NOT EXISTS chamado_comentarios (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    chamado_id          INT UNSIGNED NOT NULL,
+    usuario_id          INT UNSIGNED,
+    tipo                ENUM('comentario','status','sistema') DEFAULT 'comentario',
+    comentario          TEXT NOT NULL,
+    status_anterior     VARCHAR(40),
+    status_novo         VARCHAR(40),
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (chamado_id) REFERENCES chamados(id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_chamado (chamado_id),
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_tipo (tipo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- SEEDS: Dados iniciais
 -- ============================================================
 
@@ -1062,6 +1116,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('BI Executivo', 'bi', 'bi-bar-chart-line', 'Inteligência', 60),
 ('POPs e Qualidade', 'pops', 'bi-clipboard-check', 'Qualidade', 70),
 ('Painéis de LED', 'led', 'bi-display', 'LED', 80),
+('Chamados Internos', 'chamados', 'bi-ticket-detailed', 'Comunicação', 85),
 ('Chat Interno', 'chat', 'bi-chat-dots', 'Comunicação', 90),
 ('WhatsApp', 'whatsapp', 'bi-whatsapp', 'Comunicação', 91);
 
@@ -1153,6 +1208,21 @@ SELECT p.id, m.slug,
 FROM perfis p
 JOIN modulos m ON m.slug IN ('pops')
 WHERE p.nome IN ('diretor','gerente','producao','designer','estoque','rh')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome NOT IN ('instalador') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('chamados')
+WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','designer','producao','estoque','financeiro','rh','instalador')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
