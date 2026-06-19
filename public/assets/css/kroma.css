@@ -123,7 +123,9 @@ a:hover { color: var(--kroma-primary-light); }
     left: 0;
     z-index: 1000;
     transition: width 0.3s ease;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .sidebar.collapsed {
@@ -197,13 +199,9 @@ a:hover { color: var(--kroma-primary-light); }
 
 /* Navegação da sidebar */
 .sidebar-nav {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex: 0 0 auto;
+    overflow: visible;
     padding: 12px 0;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
 }
 
 .nav-group {
