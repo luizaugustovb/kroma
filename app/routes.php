@@ -24,6 +24,10 @@ $router->post('/esqueci-senha', 'AuthController@esqueciSenha');
 $router->get('/install', 'InstallController@index');
 $router->post('/install', 'InstallController@instalar');
 
+// Webhooks públicos
+$router->post('/webhooks/viicio', 'IntegracaoController@webhookViicio');
+$router->post('/webhooks/asaas', 'IntegracaoController@webhookAsaas');
+
 // ===========================
 // ROTAS PROTEGIDAS (requerem login)
 // ===========================
@@ -39,6 +43,9 @@ $router->post('/portal/solicitar-orcamento', 'PortalController@solicitarOrcament
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');
+$router->get('/integracoes', 'IntegracaoController@index');
+$router->post('/integracoes', 'IntegracaoController@salvar');
+$router->post('/integracoes/testar', 'IntegracaoController@testar');
 $router->get('/relatorios', 'RelatorioController@index');
 $router->get('/relatorios/exportar', 'RelatorioController@exportar');
 $router->get('/planejamento', 'PlanejamentoController@index');

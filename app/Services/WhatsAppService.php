@@ -45,7 +45,7 @@ class WhatsAppService
                 'tipo' => $tipo,
                 'origem' => $origem,
                 'status' => 'erro',
-                'erro' => 'Configure token e endpoint da API Viicio em Dados da Empresa.',
+                'erro' => 'Configure token e endpoint da API Viicio em Integrações.',
             ]);
         }
 

@@ -113,7 +113,7 @@ function whatsappData(?string $data): string
         <div class="card h-100">
             <div class="card-header">
                 <h6 class="card-title"><i class="bi bi-plug me-2 text-primary-kroma"></i>Configuração Viicio</h6>
-                <a class="badge badge-primary text-decoration-none" href="<?= APP_URL ?>/empresa">Editar configuração</a>
+                <a class="badge badge-primary text-decoration-none" href="<?= APP_URL ?>/integracoes">Editar integrações</a>
             </div>
             <div class="p-3 d-flex flex-column gap-2">
                 <div class="d-flex justify-content-between">

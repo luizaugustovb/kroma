@@ -112,6 +112,7 @@ a:hover { color: var(--kroma-primary-light); }
    =================================================== */
 .sidebar {
     width: var(--sidebar-width);
+    height: 100vh;
     min-height: 100vh;
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
@@ -197,9 +198,12 @@ a:hover { color: var(--kroma-primary-light); }
 /* Navegação da sidebar */
 .sidebar-nav {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding: 12px 0;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
 .nav-group {
@@ -313,6 +317,7 @@ a:hover { color: var(--kroma-primary-light); }
 .sidebar-footer {
     border-top: 1px solid var(--border-color);
     padding: 12px;
+    flex-shrink: 0;
 }
 
 .sidebar-user {

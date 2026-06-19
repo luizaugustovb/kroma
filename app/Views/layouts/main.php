@@ -248,7 +248,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Inteligência -->
-            <?php if (Auth::pode('bi') || Auth::pode('alertas') || Auth::pode('ia') || Auth::pode('planejamento') || Auth::pode('relatorios')): ?>
+            <?php if (Auth::pode('bi') || Auth::pode('alertas') || Auth::pode('ia') || Auth::pode('planejamento') || Auth::pode('relatorios') || Auth::pode('integracoes')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Inteligência</div>
                 <?php if (Auth::pode('alertas')): ?>
@@ -262,6 +262,13 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 <a href="<?= APP_URL ?>/ia" class="nav-item" data-tooltip="Central de IA">
                     <i class="bi bi-stars"></i>
                     <span class="nav-label">Central de IA</span>
+                </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('integracoes')): ?>
+                <a href="<?= APP_URL ?>/integracoes" class="nav-item" data-tooltip="Integrações">
+                    <i class="bi bi-plug"></i>
+                    <span class="nav-label">Integrações</span>
                 </a>
                 <?php endif; ?>
 

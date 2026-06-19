@@ -27,7 +27,7 @@ class WhatsAppController
         $titulo = 'WhatsApp';
         $subtitulo = 'Envios manuais, configuração Viicio e histórico de mensagens';
         $breadcrumbs = [['label' => 'WhatsApp', 'url' => '']];
-        $headerActions = '<a href="' . APP_URL . '/empresa" class="btn btn-secondary btn-sm"><i class="bi bi-gear"></i> Configurar API</a>';
+        $headerActions = '<a href="' . APP_URL . '/integracoes" class="btn btn-secondary btn-sm"><i class="bi bi-plug"></i> Configurar integrações</a>';
 
         ob_start();
         require APP_PATH . '/Views/whatsapp/index.php';

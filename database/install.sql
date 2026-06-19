@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS empresas (
     limite_ia_diario INT DEFAULT 100,
     chave_asaas     VARCHAR(300),
     ambiente_asaas  ENUM('sandbox','producao') DEFAULT 'sandbox',
+    webhook_viicio_token VARCHAR(160),
+    webhook_asaas_token  VARCHAR(160),
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1203,6 +1205,27 @@ CREATE TABLE IF NOT EXISTS whatsapp_envios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: integracao_webhooks
+-- ============================================================
+CREATE TABLE IF NOT EXISTS integracao_webhooks (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    origem          ENUM('viicio','asaas','outro') DEFAULT 'outro',
+    evento          VARCHAR(120),
+    external_id     VARCHAR(160),
+    payload         MEDIUMTEXT,
+    headers         TEXT,
+    status          ENUM('recebido','processado','erro','ignorado') DEFAULT 'recebido',
+    erro            TEXT,
+    ip_origem       VARCHAR(80),
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_origem (origem),
+    INDEX idx_evento (evento),
+    INDEX idx_external (external_id),
+    INDEX idx_status (status),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: ia_respostas
 -- ============================================================
 CREATE TABLE IF NOT EXISTS ia_respostas (
@@ -1370,6 +1393,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('Central de IA', 'ia', 'bi-stars', 'Inteligência', 61),
 ('Planejamento', 'planejamento', 'bi-bullseye', 'Inteligência', 62),
 ('Relatórios', 'relatorios', 'bi-file-earmark-bar-graph', 'Inteligência', 63),
+('Integrações', 'integracoes', 'bi-plug', 'Inteligência', 64),
 ('POPs e Qualidade', 'pops', 'bi-clipboard-check', 'Qualidade', 70),
 ('Painéis de LED', 'led', 'bi-display', 'LED', 80),
 ('Chamados Internos', 'chamados', 'bi-ticket-detailed', 'Comunicação', 85),
@@ -1509,6 +1533,21 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('relatorios')
 WHERE p.nome IN ('diretor','gerente','comercial','financeiro','producao','estoque','rh')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('integracoes')
+WHERE p.nome IN ('diretor','gerente','financeiro')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
