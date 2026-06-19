@@ -129,7 +129,7 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
             <?php endif; ?>
 
             <!-- Operacional -->
-            <?php if (Auth::pode('produtos') || Auth::pode('producao') || Auth::pode('agenda') || Auth::pode('estoque') || Auth::pode('compras')): ?>
+            <?php if (Auth::pode('produtos') || Auth::pode('producao') || Auth::pode('agenda') || Auth::pode('led') || Auth::pode('estoque') || Auth::pode('compras')): ?>
             <div class="nav-group">
                 <div class="nav-group-label">Operacional</div>
 
@@ -151,6 +151,13 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 <a href="<?= APP_URL ?>/agenda" class="nav-item" data-tooltip="Agenda de Instalações">
                     <i class="bi bi-calendar-check"></i>
                     <span class="nav-label">Agenda de Instalações</span>
+                </a>
+                <?php endif; ?>
+
+                <?php if (Auth::pode('led')): ?>
+                <a href="<?= APP_URL ?>/led" class="nav-item" data-tooltip="Painéis de LED">
+                    <i class="bi bi-display"></i>
+                    <span class="nav-label">Painéis de LED</span>
                 </a>
                 <?php endif; ?>
 

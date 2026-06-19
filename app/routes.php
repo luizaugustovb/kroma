@@ -117,6 +117,13 @@ $router->post('/agenda/novo', 'AgendaController@criar');
 $router->post('/agenda/:id/status', 'AgendaController@status');
 $router->post('/agenda/:id/excluir', 'AgendaController@excluir');
 
+// Painéis de LED
+$router->get('/led', 'LedController@index');
+$router->post('/led/paineis/novo', 'LedController@criarPainel');
+$router->post('/led/paineis/:id/status', 'LedController@statusPainel');
+$router->post('/led/locacoes/novo', 'LedController@criarLocacao');
+$router->post('/led/locacoes/:id/status', 'LedController@statusLocacao');
+
 // Estoque e materiais
 $router->get('/estoque', 'EstoqueController@index');
 $router->get('/estoque/novo', 'EstoqueController@novo');
