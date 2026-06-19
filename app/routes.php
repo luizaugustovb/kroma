@@ -39,6 +39,8 @@ $router->post('/portal/solicitar-orcamento', 'PortalController@solicitarOrcament
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');
+$router->get('/relatorios', 'RelatorioController@index');
+$router->get('/relatorios/exportar', 'RelatorioController@exportar');
 $router->get('/planejamento', 'PlanejamentoController@index');
 $router->post('/planejamento/metas/novo', 'PlanejamentoController@criarMeta');
 $router->post('/planejamento/metas/:id/status', 'PlanejamentoController@statusMeta');

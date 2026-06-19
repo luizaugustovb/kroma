@@ -1369,6 +1369,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('BI Executivo', 'bi', 'bi-bar-chart-line', 'Inteligência', 60),
 ('Central de IA', 'ia', 'bi-stars', 'Inteligência', 61),
 ('Planejamento', 'planejamento', 'bi-bullseye', 'Inteligência', 62),
+('Relatórios', 'relatorios', 'bi-file-earmark-bar-graph', 'Inteligência', 63),
 ('POPs e Qualidade', 'pops', 'bi-clipboard-check', 'Qualidade', 70),
 ('Painéis de LED', 'led', 'bi-display', 'LED', 80),
 ('Chamados Internos', 'chamados', 'bi-ticket-detailed', 'Comunicação', 85),
@@ -1497,6 +1498,17 @@ SELECT p.id, m.slug,
 FROM perfis p
 JOIN modulos m ON m.slug IN ('planejamento')
 WHERE p.nome IN ('diretor','gerente','comercial','financeiro','producao')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug, 1, 0, 0, 0
+FROM perfis p
+JOIN modulos m ON m.slug IN ('relatorios')
+WHERE p.nome IN ('diretor','gerente','comercial','financeiro','producao','estoque','rh')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
