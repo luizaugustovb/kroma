@@ -39,6 +39,12 @@ $router->post('/portal/solicitar-orcamento', 'PortalController@solicitarOrcament
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');
+$router->get('/planejamento', 'PlanejamentoController@index');
+$router->post('/planejamento/metas/novo', 'PlanejamentoController@criarMeta');
+$router->post('/planejamento/metas/:id/status', 'PlanejamentoController@statusMeta');
+$router->post('/planejamento/metas/:id/sincronizar', 'PlanejamentoController@sincronizarMeta');
+$router->post('/planejamento/acoes/novo', 'PlanejamentoController@criarAcao');
+$router->post('/planejamento/acoes/:id/status', 'PlanejamentoController@statusAcao');
 $router->get('/ia', 'IaController@index');
 $router->post('/ia/gerar', 'IaController@gerar');
 

@@ -1229,6 +1229,61 @@ CREATE TABLE IF NOT EXISTS ia_respostas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELA: planejamento_metas
+-- ============================================================
+CREATE TABLE IF NOT EXISTS planejamento_metas (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    codigo              VARCHAR(40) NOT NULL UNIQUE,
+    titulo              VARCHAR(180) NOT NULL,
+    tipo                ENUM('geral','vendedor','setor','produto') DEFAULT 'geral',
+    indicador           ENUM('vendas','orcamentos','producao','financeiro','margem','personalizado') DEFAULT 'vendas',
+    periodo_mes         CHAR(7) NOT NULL,
+    usuario_id          INT UNSIGNED,
+    produto_id          INT UNSIGNED,
+    setor               VARCHAR(120),
+    unidade             ENUM('valor','quantidade','percentual') DEFAULT 'valor',
+    valor_meta          DECIMAL(14,2) DEFAULT 0,
+    valor_atual         DECIMAL(14,2) DEFAULT 0,
+    data_inicio         DATE,
+    data_fim            DATE,
+    status              ENUM('planejada','em_andamento','atingida','risco','cancelada') DEFAULT 'planejada',
+    observacoes         TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    FOREIGN KEY (produto_id) REFERENCES produtos(id) ON DELETE SET NULL,
+    INDEX idx_codigo (codigo),
+    INDEX idx_periodo (periodo_mes),
+    INDEX idx_status (status),
+    INDEX idx_tipo (tipo),
+    INDEX idx_usuario (usuario_id),
+    INDEX idx_produto (produto_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- TABELA: planejamento_acoes
+-- ============================================================
+CREATE TABLE IF NOT EXISTS planejamento_acoes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    meta_id             INT UNSIGNED,
+    responsavel_id      INT UNSIGNED,
+    titulo              VARCHAR(180) NOT NULL,
+    descricao           TEXT,
+    prazo               DATE,
+    prioridade          ENUM('baixa','media','alta','urgente') DEFAULT 'media',
+    status              ENUM('pendente','em_execucao','concluida','cancelada') DEFAULT 'pendente',
+    resultado           TEXT,
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (meta_id) REFERENCES planejamento_metas(id) ON DELETE SET NULL,
+    FOREIGN KEY (responsavel_id) REFERENCES usuarios(id) ON DELETE SET NULL,
+    INDEX idx_meta (meta_id),
+    INDEX idx_responsavel (responsavel_id),
+    INDEX idx_status (status),
+    INDEX idx_prazo (prazo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: chat_canais
 -- ============================================================
 CREATE TABLE IF NOT EXISTS chat_canais (
@@ -1313,6 +1368,7 @@ INSERT INTO modulos (nome, slug, icone, grupo, ordem) VALUES
 ('Central de Alertas', 'alertas', 'bi-bell', 'Inteligência', 59),
 ('BI Executivo', 'bi', 'bi-bar-chart-line', 'Inteligência', 60),
 ('Central de IA', 'ia', 'bi-stars', 'Inteligência', 61),
+('Planejamento', 'planejamento', 'bi-bullseye', 'Inteligência', 62),
 ('POPs e Qualidade', 'pops', 'bi-clipboard-check', 'Qualidade', 70),
 ('Painéis de LED', 'led', 'bi-display', 'LED', 80),
 ('Chamados Internos', 'chamados', 'bi-ticket-detailed', 'Comunicação', 85),
@@ -1426,6 +1482,21 @@ SELECT p.id, m.slug, 1, 0, 0, 0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('bi')
 WHERE p.nome IN ('diretor','gerente','financeiro')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, m.slug,
+       1,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente','comercial','financeiro','producao') THEN 1 ELSE 0 END,
+       CASE WHEN p.nome IN ('diretor','gerente') THEN 1 ELSE 0 END
+FROM perfis p
+JOIN modulos m ON m.slug IN ('planejamento')
+WHERE p.nome IN ('diretor','gerente','comercial','financeiro','producao')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
