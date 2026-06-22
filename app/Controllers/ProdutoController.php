@@ -184,7 +184,7 @@ class ProdutoController
             $novo['codigo'] = $this->gerarCodigo();
             $novo['nome'] = $produto['nome'] . ' - Cópia';
             $colunas = array_keys($novo);
-            $colunas = array_filter($colunas, fn($c) => !in_array($c, ['created_at','updated_at'], true));
+            $colunas = array_filter($colunas, fn($c) => !in_array($c, ['created_at', 'updated_at'], true));
             $sql = "INSERT INTO produtos (" . implode(', ', $colunas) . ", created_at) VALUES (:" . implode(', :', $colunas) . ", NOW())";
             $stmt = $pdo->prepare($sql);
             $stmt->execute(array_intersect_key($novo, array_flip($colunas)));
@@ -311,6 +311,7 @@ class ProdutoController
     {
         return [
             'categoria_id' => !empty($_POST['categoria_id']) ? (int)$_POST['categoria_id'] : null,
+            'fornecedor_id' => !empty($_POST['fornecedor_id']) ? (int)$_POST['fornecedor_id'] : null,
             'codigo' => trim($_POST['codigo'] ?? ''),
             'nome' => trim($_POST['nome'] ?? ''),
             'tipo' => $_POST['tipo'] ?? 'produto',
@@ -377,6 +378,7 @@ class ProdutoController
             'categorias' => $this->query("SELECT * FROM categorias_produtos WHERE ativo = 1 ORDER BY ordem, nome"),
             'processos' => $this->query("SELECT * FROM processos_produtivos WHERE ativo = 1 ORDER BY setor, nome"),
             'acabamentos' => $this->query("SELECT * FROM acabamentos WHERE ativo = 1 ORDER BY nome"),
+            'fornecedores' => $this->query("SELECT id, nome FROM fornecedores WHERE status = 'ativo' ORDER BY nome"),
             'tipoLabels' => $this->tipoLabels,
             'statusLabels' => $this->statusLabels,
         ];

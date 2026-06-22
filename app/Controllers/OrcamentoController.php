@@ -35,17 +35,24 @@ class OrcamentoController
 
     public function index(): void
     {
+        [$whereClause, $params] = $this->buildPeriodFilter('o.created_at');
+        [$escopoClause, $escopoParams] = $this->escopoOrcamentos('o');
+        $whereClause = '(' . $whereClause . ') AND ' . $escopoClause;
+        $params = array_merge($params, $escopoParams);
+        $filtro = $this->filtroAtual();
+
         try {
-            $stmt = db()->query(
-                "SELECT o.*, c.nome AS cliente_nome, l.nome AS lead_nome, u.nome AS vendedor_nome,
+            $sql = "SELECT o.*, c.nome AS cliente_nome, l.nome AS lead_nome, u.nome AS vendedor_nome,
                     (SELECT COUNT(*) FROM ordem_servicos os WHERE os.orcamento_id = o.id) AS total_os,
                     (SELECT COUNT(*) FROM contas_receber cr WHERE cr.orcamento_id = o.id) AS total_cobrancas
                  FROM orcamentos o
                  LEFT JOIN clientes c ON c.id = o.cliente_id
                  LEFT JOIN leads l ON l.id = o.lead_id
                  LEFT JOIN usuarios u ON u.id = o.vendedor_id
-                 ORDER BY o.created_at DESC"
-            );
+                 WHERE $whereClause
+                 ORDER BY o.created_at DESC";
+            $stmt = db()->prepare($sql);
+            $stmt->execute($params);
             $orcamentos = $stmt->fetchAll();
         } catch (\Exception $e) {
             $orcamentos = [];
@@ -123,6 +130,7 @@ class OrcamentoController
         $ordem = $this->ordemDoOrcamento($id);
         $contaReceber = $this->contaReceberDoOrcamento($id);
         $comissao = $this->comissao($id);
+        $designers = $this->designers();
         $tipoLabels = $this->tipoLabels;
         $statusLabels = $this->statusLabels;
         $titulo = $orcamento['codigo'];
@@ -197,7 +205,8 @@ class OrcamentoController
             }
 
             $this->gerarComissao($orcamento);
-            $ordemId = $this->criarOrdemServico($orcamento);
+            $designerId = $this->designerSelecionado($_POST['designer_id'] ?? null);
+            $ordemId = $this->criarOrdemServico($orcamento, $designerId);
             $this->gerarContaReceber($orcamento, $ordemId);
 
             Auth::registrarAuditoria('orcamentos', 'aprovar_integrado', (int)$id);
@@ -219,11 +228,111 @@ class OrcamentoController
         $this->alterarStatus($id, 'cancelado', 'Orçamento cancelado.');
     }
 
+    public function uploadArquivo(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        $orcamento = $this->buscar($id);
+        if (!$orcamento) {
+            $_SESSION['flash_error'] = 'Orçamento não encontrado.';
+            header('Location: ' . APP_URL . '/orcamentos');
+            exit;
+        }
+
+        $file = $_FILES['arquivo_projeto'] ?? null;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            $_SESSION['flash_error'] = 'Erro no upload do arquivo.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        $maxSize = 10 * 1024 * 1024;
+        if ($file['size'] > $maxSize) {
+            $_SESSION['flash_error'] = 'Arquivo muito grande. Máximo 10MB.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/zip'];
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+        if (!in_array($mimeType, $allowedTypes, true)) {
+            $_SESSION['flash_error'] = 'Tipo de arquivo não permitido.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        $uploadDir = APP_PATH . '/../public/uploads/orcamentos/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $filename = 'orc-' . $id . '-' . time() . '.' . strtolower(preg_replace('/[^a-z0-9.]/i', '', $ext));
+        $dest = $uploadDir . $filename;
+
+        // Remove arquivo anterior se existir
+        if (!empty($orcamento['arquivo_projeto'])) {
+            $old = $uploadDir . basename($orcamento['arquivo_projeto']);
+            if (file_exists($old)) @unlink($old);
+        }
+
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            $_SESSION['flash_error'] = 'Falha ao salvar arquivo no servidor.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        try {
+            db()->prepare("UPDATE orcamentos SET arquivo_projeto = ?, updated_at = NOW() WHERE id = ?")
+                ->execute([$filename, $id]);
+            Auth::registrarAuditoria('orcamentos', 'upload_arquivo', (int)$id);
+            $_SESSION['flash_success'] = 'Arquivo enviado com sucesso.';
+        } catch (\Exception $e) {
+            @unlink($dest);
+            $_SESSION['flash_error'] = 'Erro ao salvar referência do arquivo.';
+        }
+
+        header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+        exit;
+    }
+
+    public function removerArquivo(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+            exit;
+        }
+
+        $orcamento = $this->buscar($id);
+        if ($orcamento && !empty($orcamento['arquivo_projeto'])) {
+            $path = APP_PATH . '/../public/uploads/orcamentos/' . basename($orcamento['arquivo_projeto']);
+            if (file_exists($path)) @unlink($path);
+            db()->prepare("UPDATE orcamentos SET arquivo_projeto = NULL, updated_at = NOW() WHERE id = ?")->execute([$id]);
+            Auth::registrarAuditoria('orcamentos', 'remover_arquivo', (int)$id);
+            $_SESSION['flash_success'] = 'Arquivo removido.';
+        }
+
+        header('Location: ' . APP_URL . '/orcamentos/' . $id . '/editar');
+        exit;
+    }
+
     private function salvar(?string $id = null): void
     {
         if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
             $_SESSION['flash_error'] = 'Token inválido.';
             header('Location: ' . APP_URL . '/orcamentos' . ($id ? '/' . $id . '/editar' : '/novo'));
+            exit;
+        }
+
+        if ($id && !$this->buscar($id)) {
+            $_SESSION['flash_error'] = 'Orçamento não encontrado ou sem permissão.';
+            header('Location: ' . APP_URL . '/orcamentos');
             exit;
         }
 
@@ -298,6 +407,12 @@ class OrcamentoController
 
         try {
             db()->prepare("UPDATE orcamentos SET status = ?, updated_at = NOW() WHERE id = ?")->execute([$status, $id]);
+
+            // Notificar cliente via WhatsApp ao enviar orçamento
+            if ($status === 'enviado') {
+                $this->notificarOrcamentoEnviado((int)$id);
+            }
+
             $_SESSION['flash_success'] = $mensagem;
         } catch (\Exception $e) {
             $_SESSION['flash_error'] = 'Erro ao alterar status.';
@@ -307,12 +422,50 @@ class OrcamentoController
         exit;
     }
 
+    private function notificarOrcamentoEnviado(int $id): void
+    {
+        try {
+            $orc = db()->prepare(
+                "SELECT o.*, c.nome AS cliente_nome, c.whatsapp AS cliente_whatsapp, c.id AS cid
+                 FROM orcamentos o
+                 LEFT JOIN clientes c ON c.id = o.cliente_id
+                 WHERE o.id = ?"
+            );
+            $orc->execute([$id]);
+            $dados = $orc->fetch();
+
+            if (!$dados || empty($dados['cliente_whatsapp'])) return;
+
+            $portalUrl = APP_URL . '/portal';
+            $msg = "Olá, *{$dados['cliente_nome']}*!\n\n"
+                . "Seu orçamento *{$dados['codigo']}* — _{$dados['titulo']}_ foi enviado para sua aprovação.\n\n"
+                . "Acesse o portal para visualizar e aprovar:\n{$portalUrl}\n\n"
+                . "Qualquer dúvida, estamos à disposição!";
+
+            $wpp = new \App\Services\WhatsAppService();
+            $wpp->enviar([
+                'telefone' => $dados['cliente_whatsapp'],
+                'mensagem' => $msg,
+                'tipo' => 'orcamento',
+                'origem' => 'Orçamento enviado',
+                'cliente_id' => $dados['cid'],
+            ]);
+        } catch (\Exception $e) {
+            // Não bloquear o fluxo principal por falha de WhatsApp
+        }
+    }
+
     private function extrairDados(): array
     {
+        $vendedorId = !empty($_POST['vendedor_id']) ? (int)$_POST['vendedor_id'] : Auth::id();
+        if (!Auth::temPerfil('administrador')) {
+            $vendedorId = Auth::id();
+        }
+
         return [
             'cliente_id' => !empty($_POST['cliente_id']) ? (int)$_POST['cliente_id'] : null,
             'lead_id' => !empty($_POST['lead_id']) ? (int)$_POST['lead_id'] : null,
-            'vendedor_id' => !empty($_POST['vendedor_id']) ? (int)$_POST['vendedor_id'] : Auth::id(),
+            'vendedor_id' => $vendedorId,
             'tipo' => $_POST['tipo'] ?? 'completo',
             'status' => $_POST['status'] ?? 'rascunho',
             'titulo' => trim($_POST['titulo'] ?? ''),
@@ -351,12 +504,14 @@ class OrcamentoController
 
             $item = [
                 'produto_id' => !empty($_POST['item_produto_id'][$i]) ? (int)$_POST['item_produto_id'][$i] : null,
+                'tipo_item'  => in_array($_POST['item_tipo_item'][$i] ?? '', ['pronto', 'personalizado']) ? $_POST['item_tipo_item'][$i] : 'personalizado',
                 'produto_nome' => $produto,
                 'descricao' => trim($_POST['item_descricao'][$i] ?? ''),
                 'quantidade' => $quantidade,
                 'unidade' => trim($_POST['item_unidade'][$i] ?? 'un'),
                 'largura' => $this->numero($_POST['item_largura'][$i] ?? 0),
                 'altura' => $this->numero($_POST['item_altura'][$i] ?? 0),
+                'material_tipo' => trim($_POST['item_material_tipo'][$i] ?? ''),
                 'custo_material' => $materialCustoUnitarioItem > 0 ? $materialCustoUnitarioItem : $custoMaterialInformado,
                 'custo_tinta' => $this->numero($_POST['item_custo_tinta'][$i] ?? 0),
                 'custo_acabamento' => $this->numero($_POST['item_custo_acabamento'][$i] ?? 0),
@@ -415,12 +570,12 @@ class OrcamentoController
     {
         $stmt = db()->prepare(
             "INSERT INTO orcamento_itens
-             (orcamento_id, produto_id, produto_nome, descricao, quantidade, unidade, largura, altura, area_m2,
+             (orcamento_id, produto_id, tipo_item, produto_nome, descricao, quantidade, unidade, largura, altura, area_m2, material_tipo,
               custo_material, custo_tinta, custo_acabamento, custo_mao_obra, custo_maquina, custo_terceiros,
               desperdicio_percent, margem_percent, impostos_percent, comissao_percent, desconto_percent,
               custo_total, preco_unitario, total, created_at)
              VALUES
-             (:orcamento_id, :produto_id, :produto_nome, :descricao, :quantidade, :unidade, :largura, :altura, :area_m2,
+             (:orcamento_id, :produto_id, :tipo_item, :produto_nome, :descricao, :quantidade, :unidade, :largura, :altura, :area_m2, :material_tipo,
               :custo_material, :custo_tinta, :custo_acabamento, :custo_mao_obra, :custo_maquina, :custo_terceiros,
               :desperdicio_percent, :margem_percent, :impostos_percent, :comissao_percent, :desconto_percent,
               :custo_total, :preco_unitario, :total, NOW())"
@@ -474,7 +629,7 @@ class OrcamentoController
         )->execute([$orcamento['id'], $orcamento['vendedor_id'], $base, $percentual, $valor, $status, $observacaoComissao]);
     }
 
-    private function criarOrdemServico(array $orcamento): int
+    private function criarOrdemServico(array $orcamento, ?int $designerId = null): int
     {
         $existente = $this->ordemDoOrcamento((string)$orcamento['id']);
         if ($existente) {
@@ -491,7 +646,7 @@ class OrcamentoController
             $codigo,
             $orcamento['id'],
             $orcamento['cliente_id'],
-            Auth::id(),
+            $designerId,
             'OS - ' . $orcamento['titulo'],
             $orcamento['descricao'] ?? '',
             date('Y-m-d'),
@@ -673,15 +828,16 @@ class OrcamentoController
     private function buscar(string $id): ?array
     {
         try {
+            [$escopoClause, $escopoParams] = $this->escopoOrcamentos('o');
             $stmt = db()->prepare(
                 "SELECT o.*, c.nome AS cliente_nome, l.nome AS lead_nome, u.nome AS vendedor_nome
                  FROM orcamentos o
                  LEFT JOIN clientes c ON c.id = o.cliente_id
                  LEFT JOIN leads l ON l.id = o.lead_id
                  LEFT JOIN usuarios u ON u.id = o.vendedor_id
-                 WHERE o.id = ?"
+                 WHERE o.id = ? AND $escopoClause"
             );
-            $stmt->execute([$id]);
+            $stmt->execute(array_merge([$id], $escopoParams));
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) {
             return null;
@@ -796,9 +952,42 @@ class OrcamentoController
             'clientes' => $this->query("SELECT id, nome FROM clientes WHERE status = 'ativo' ORDER BY nome LIMIT 500"),
             'leads' => $this->query("SELECT id, cliente_id, nome, empresa, produto_interesse, descricao FROM leads ORDER BY created_at DESC LIMIT 500"),
             'vendedores' => $this->query("SELECT id, nome FROM usuarios WHERE ativo = 1 ORDER BY nome"),
+            'designers' => $this->designers(),
             'produtos' => $this->query("SELECT * FROM produtos WHERE status = 'ativo' ORDER BY nome"),
             'materiais' => $this->query("SELECT *, (estoque_atual - estoque_reservado) AS estoque_disponivel FROM materiais WHERE status = 'ativo' ORDER BY nome"),
         ];
+    }
+
+    private function escopoOrcamentos(string $alias = 'o'): array
+    {
+        if (Auth::temPerfil('administrador')) {
+            return ['1=1', []];
+        }
+
+        return ["$alias.vendedor_id = ?", [Auth::id()]];
+    }
+
+    private function designers(): array
+    {
+        return $this->query(
+            "SELECT u.id, u.nome
+             FROM usuarios u
+             JOIN perfis p ON p.id = u.perfil_id
+             WHERE u.ativo = 1 AND p.nome = 'designer'
+             ORDER BY u.nome"
+        );
+    }
+
+    private function designerSelecionado($designerId): ?int
+    {
+        $designers = $this->designers();
+        if (empty($designers)) {
+            return null;
+        }
+
+        $ids = array_map(fn($designer) => (int)$designer['id'], $designers);
+        $id = (int)$designerId;
+        return in_array($id, $ids, true) ? $id : (int)$designers[0]['id'];
     }
 
     private function query(string $sql): array
@@ -836,12 +1025,14 @@ class OrcamentoController
     {
         return [
             'produto_id' => null,
+            'tipo_item' => 'personalizado',
             'produto_nome' => '',
             'descricao' => '',
             'quantidade' => 1,
             'unidade' => 'un',
             'largura' => 0,
             'altura' => 0,
+            'material_tipo' => '',
             'custo_material' => 0,
             'custo_tinta' => 0,
             'custo_acabamento' => 0,
@@ -855,6 +1046,43 @@ class OrcamentoController
             'desconto_percent' => 0,
             'material_id' => null,
             'material_quantidade' => 0,
+        ];
+    }
+
+    // -------------------------
+    // Helpers de filtro de período
+    // -------------------------
+    private function buildPeriodFilter(string $campo): array
+    {
+        $periodo = $_GET['periodo'] ?? 'todos';
+        $de  = $_GET['de']  ?? '';
+        $ate = $_GET['ate'] ?? '';
+
+        // Valida formato de data
+        if ($de  && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $de))  $de  = '';
+        if ($ate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $ate)) $ate = '';
+
+        if ($de && $ate) {
+            return ["$campo BETWEEN ? AND ?", [$de . ' 00:00:00', $ate . ' 23:59:59']];
+        }
+        switch ($periodo) {
+            case 'hoje':
+                return ["DATE($campo) = CURDATE()", []];
+            case 'semana':
+                return ["$campo >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)", []];
+            case 'mes':
+                return ["$campo >= DATE_FORMAT(CURDATE(), '%Y-%m-01')", []];
+            default:
+                return ['1=1', []];
+        }
+    }
+
+    private function filtroAtual(): array
+    {
+        return [
+            'periodo' => $_GET['periodo'] ?? 'todos',
+            'de'      => $_GET['de']  ?? '',
+            'ate'     => $_GET['ate'] ?? '',
         ];
     }
 }

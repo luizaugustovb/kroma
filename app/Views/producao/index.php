@@ -1,4 +1,28 @@
 <?php
+// Barra de filtro
+$pAtivo = $filtro['periodo'] ?? 'todos';
+$pDe    = htmlspecialchars($filtro['de']  ?? '');
+$pAte   = htmlspecialchars($filtro['ate'] ?? '');
+$btnClass = fn($p) => 'btn btn-sm ' . ($pAtivo === $p ? 'btn-primary' : 'btn-secondary');
+?>
+<div class="card mb-3">
+    <div class="p-2 d-flex gap-2 flex-wrap align-items-center">
+        <span class="fw-bold small me-1">Período:</span>
+        <a href="?periodo=hoje" class="<?= $btnClass('hoje') ?>">Hoje</a>
+        <a href="?periodo=semana" class="<?= $btnClass('semana') ?>">Esta semana</a>
+        <a href="?periodo=mes" class="<?= $btnClass('mes') ?>">Este mês</a>
+        <a href="?periodo=todos" class="<?= $btnClass('todos') ?>">Todos</a>
+        <span class="text-muted small">ou</span>
+        <form class="d-flex gap-2 align-items-center" method="get">
+            <input type="date" name="de" class="form-control form-control-sm" value="<?= $pDe ?>" style="width:140px">
+            <span class="small">até</span>
+            <input type="date" name="ate" class="form-control form-control-sm" value="<?= $pAte ?>" style="width:140px">
+            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+            <?php if ($pDe || $pAte): ?><a href="?periodo=todos" class="btn btn-sm btn-secondary">Limpar</a><?php endif; ?>
+        </form>
+    </div>
+</div>
+<?php
 $statusClasses = [
     'aberta' => 'badge-secondary',
     'em_producao' => 'badge-primary',
@@ -12,10 +36,10 @@ $prioridadeClasses = [
     'alta' => 'badge-warning',
     'urgente' => 'badge-danger',
 ];
-$ativas = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','cancelada'], true));
+$ativas = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada', 'cancelada'], true));
 $emProducao = array_filter($ordens, fn($o) => $o['status'] === 'em_producao');
-$atrasadas = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','cancelada'], true) && !empty($o['data_prometida']) && $o['data_prometida'] < date('Y-m-d'));
-$hoje = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','cancelada'], true) && !empty($o['data_prometida']) && $o['data_prometida'] === date('Y-m-d'));
+$atrasadas = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada', 'cancelada'], true) && !empty($o['data_prometida']) && $o['data_prometida'] < date('Y-m-d'));
+$hoje = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada', 'cancelada'], true) && !empty($o['data_prometida']) && $o['data_prometida'] === date('Y-m-d'));
 ?>
 
 <div class="row g-3 mb-4">
@@ -51,50 +75,96 @@ $hoje = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','c
 
 <div class="row g-3 mb-4">
     <?php foreach (['aberta' => 'Aberta', 'em_producao' => 'Em Produção', 'aguardando' => 'Aguardando', 'finalizada' => 'Finalizada'] as $status => $label): ?>
-    <div class="col-md-3">
-        <div class="card h-100">
-            <div class="card-header">
-                <h6 class="card-title"><?= $label ?></h6>
-                <span class="badge <?= $statusClasses[$status] ?>"><?= count(array_filter($ordens, fn($o) => $o['status'] === $status)) ?></span>
-            </div>
-            <div class="p-3 d-flex flex-column gap-2">
-                <?php foreach (array_slice(array_filter($ordens, fn($o) => $o['status'] === $status), 0, 4) as $ordem): ?>
-                <?php
-                    $totalEtapas = max(1, (int)$ordem['total_etapas']);
-                    $progresso = round(((int)$ordem['etapas_concluidas'] / $totalEtapas) * 100);
-                    $prazoClass = 'badge-secondary';
-                    $prazoLabel = !empty($ordem['data_prometida']) ? date('d/m/Y', strtotime($ordem['data_prometida'])) : 'Sem prazo';
-                    if (!in_array($ordem['status'], ['finalizada','cancelada'], true) && !empty($ordem['data_prometida'])) {
-                        if ($ordem['data_prometida'] < date('Y-m-d')) {
-                            $prazoClass = 'badge-danger';
-                            $prazoLabel = 'Atrasada';
-                        } elseif ($ordem['data_prometida'] === date('Y-m-d')) {
-                            $prazoClass = 'badge-warning';
-                            $prazoLabel = 'Hoje';
+        <div class="col-md-3">
+            <div class="card h-100 producao-kanban-column" data-status="<?= $status ?>">
+                <div class="card-header">
+                    <h6 class="card-title"><?= $label ?></h6>
+                    <span class="badge <?= $statusClasses[$status] ?>"><?= count(array_filter($ordens, fn($o) => $o['status'] === $status)) ?></span>
+                </div>
+                <div class="p-3 d-flex flex-column gap-2 producao-kanban-dropzone" data-status="<?= $status ?>">
+                    <?php foreach (array_slice(array_filter($ordens, fn($o) => $o['status'] === $status), 0, 4) as $ordem): ?>
+                        <?php
+                        $totalEtapas = max(1, (int)$ordem['total_etapas']);
+                        $progresso = round(((int)$ordem['etapas_concluidas'] / $totalEtapas) * 100);
+                        $prazoClass = 'badge-secondary';
+                        $prazoLabel = !empty($ordem['data_prometida']) ? date('d/m/Y', strtotime($ordem['data_prometida'])) : 'Sem prazo';
+                        if (!in_array($ordem['status'], ['finalizada', 'cancelada'], true) && !empty($ordem['data_prometida'])) {
+                            if ($ordem['data_prometida'] < date('Y-m-d')) {
+                                $prazoClass = 'badge-danger';
+                                $prazoLabel = 'Atrasada';
+                            } elseif ($ordem['data_prometida'] === date('Y-m-d')) {
+                                $prazoClass = 'badge-warning';
+                                $prazoLabel = 'Hoje';
+                            }
                         }
-                    }
-                ?>
-                <a class="border-kroma rounded-kroma p-2 text-decoration-none d-block" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>">
-                    <div class="d-flex justify-content-between gap-2 mb-2">
-                        <strong><?= htmlspecialchars($ordem['codigo']) ?></strong>
-                        <span class="badge <?= $prioridadeClasses[$ordem['prioridade']] ?? 'badge-secondary' ?>"><?= $prioridadeLabels[$ordem['prioridade']] ?? $ordem['prioridade'] ?></span>
-                    </div>
-                    <div class="small fw-bold text-body"><?= htmlspecialchars($ordem['titulo']) ?></div>
-                    <div class="small text-muted mb-2"><?= htmlspecialchars($ordem['cliente_nome'] ?? '-') ?></div>
-                    <div class="d-flex justify-content-between">
-                        <span class="badge <?= $prazoClass ?>"><?= $prazoLabel ?></span>
-                        <span class="badge badge-info"><?= $progresso ?>%</span>
-                    </div>
-                </a>
-                <?php endforeach; ?>
-                <?php if (empty(array_filter($ordens, fn($o) => $o['status'] === $status))): ?>
-                    <span class="badge badge-secondary align-self-start">Sem OS</span>
-                <?php endif; ?>
+                        ?>
+                        <a class="border-kroma rounded-kroma p-2 text-decoration-none d-block producao-kanban-card" draggable="true" data-os-id="<?= $ordem['id'] ?>" data-current-status="<?= htmlspecialchars($ordem['status']) ?>" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>">
+                            <div class="d-flex justify-content-between gap-2 mb-2">
+                                <strong><?= htmlspecialchars($ordem['codigo']) ?></strong>
+                                <span class="badge <?= $prioridadeClasses[$ordem['prioridade']] ?? 'badge-secondary' ?>"><?= $prioridadeLabels[$ordem['prioridade']] ?? $ordem['prioridade'] ?></span>
+                            </div>
+                            <div class="small fw-bold text-body"><?= htmlspecialchars($ordem['titulo']) ?></div>
+                            <div class="small text-muted mb-2"><?= htmlspecialchars($ordem['cliente_nome'] ?? '-') ?></div>
+                            <div class="d-flex justify-content-between">
+                                <span class="badge <?= $prazoClass ?>"><?= $prazoLabel ?></span>
+                                <span class="badge badge-info"><?= $progresso ?>%</span>
+                            </div>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (empty(array_filter($ordens, fn($o) => $o['status'] === $status))): ?>
+                        <span class="badge badge-secondary align-self-start">Sem OS</span>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
-    </div>
     <?php endforeach; ?>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    let draggedCard = null;
+
+    document.querySelectorAll('.producao-kanban-card').forEach(card => {
+        card.addEventListener('dragstart', event => {
+            draggedCard = card;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', card.dataset.osId || '');
+            card.classList.add('dragging');
+        });
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            draggedCard = null;
+        });
+    });
+
+    document.querySelectorAll('.producao-kanban-dropzone').forEach(zone => {
+        zone.addEventListener('dragover', event => {
+            event.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', event => {
+            event.preventDefault();
+            zone.classList.remove('drag-over');
+            const osId = event.dataTransfer.getData('text/plain') || draggedCard?.dataset.osId;
+            const status = zone.dataset.status;
+            if (!osId || !status) return;
+            if (draggedCard?.dataset.currentStatus === status) return;
+
+            const body = new URLSearchParams();
+            body.set('csrf_token', csrf);
+            body.set('status', status);
+
+            fetch(`${KROMA.baseUrl}/producao/${osId}/status`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
+                body
+            }).then(() => window.location.reload());
+        });
+    });
+});
+</script>
 
 <div class="table-wrapper">
     <table class="table datatable">
@@ -113,12 +183,12 @@ $hoje = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','c
         </thead>
         <tbody>
             <?php foreach ($ordens as $ordem): ?>
-            <?php
+                <?php
                 $totalEtapas = max(1, (int)$ordem['total_etapas']);
                 $progresso = round(((int)$ordem['etapas_concluidas'] / $totalEtapas) * 100);
                 $prazoClass = 'badge-secondary';
                 $prazoLabel = !empty($ordem['data_prometida']) ? date('d/m/Y', strtotime($ordem['data_prometida'])) : 'Sem prazo';
-                if (!in_array($ordem['status'], ['finalizada','cancelada'], true) && !empty($ordem['data_prometida'])) {
+                if (!in_array($ordem['status'], ['finalizada', 'cancelada'], true) && !empty($ordem['data_prometida'])) {
                     if ($ordem['data_prometida'] < date('Y-m-d')) {
                         $prazoClass = 'badge-danger';
                         $prazoLabel = 'Atrasada desde ' . date('d/m/Y', strtotime($ordem['data_prometida']));
@@ -127,26 +197,26 @@ $hoje = array_filter($ordens, fn($o) => !in_array($o['status'], ['finalizada','c
                         $prazoLabel = 'Vence hoje';
                     }
                 }
-            ?>
-            <tr>
-                <td><strong><?= htmlspecialchars($ordem['codigo']) ?></strong></td>
-                <td>
-                    <div class="fw-bold"><?= htmlspecialchars($ordem['titulo']) ?></div>
-                    <div style="font-size:12px;color:var(--text-muted)"><?= (int)$ordem['total_itens'] ?> itens · <?= (int)$ordem['total_etapas'] ?> etapas</div>
-                </td>
-                <td><?= htmlspecialchars($ordem['cliente_nome'] ?? '-') ?></td>
-                <td><span class="badge <?= $prioridadeClasses[$ordem['prioridade']] ?? 'badge-secondary' ?>"><?= $prioridadeLabels[$ordem['prioridade']] ?? $ordem['prioridade'] ?></span></td>
-                <td><span class="badge <?= $statusClasses[$ordem['status']] ?? 'badge-secondary' ?>"><?= $statusLabels[$ordem['status']] ?? $ordem['status'] ?></span></td>
-                <td><span class="badge <?= $prazoClass ?>"><?= $prazoLabel ?></span></td>
-                <td><span class="badge badge-info"><?= $progresso ?>%</span></td>
-                <td><?= htmlspecialchars($ordem['responsavel_nome'] ?? '-') ?></td>
-                <td>
-                    <div class="d-flex gap-1">
-                        <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
-                        <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
-                    </div>
-                </td>
-            </tr>
+                ?>
+                <tr>
+                    <td><strong><?= htmlspecialchars($ordem['codigo']) ?></strong></td>
+                    <td>
+                        <div class="fw-bold"><?= htmlspecialchars($ordem['titulo']) ?></div>
+                        <div style="font-size:12px;color:var(--text-muted)"><?= (int)$ordem['total_itens'] ?> itens · <?= (int)$ordem['total_etapas'] ?> etapas</div>
+                    </td>
+                    <td><?= htmlspecialchars($ordem['cliente_nome'] ?? '-') ?></td>
+                    <td><span class="badge <?= $prioridadeClasses[$ordem['prioridade']] ?? 'badge-secondary' ?>"><?= $prioridadeLabels[$ordem['prioridade']] ?? $ordem['prioridade'] ?></span></td>
+                    <td><span class="badge <?= $statusClasses[$ordem['status']] ?? 'badge-secondary' ?>"><?= $statusLabels[$ordem['status']] ?? $ordem['status'] ?></span></td>
+                    <td><span class="badge <?= $prazoClass ?>"><?= $prazoLabel ?></span></td>
+                    <td><span class="badge badge-info"><?= $progresso ?>%</span></td>
+                    <td><?= htmlspecialchars($ordem['responsavel_nome'] ?? '-') ?></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
+                            <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/producao/<?= $ordem['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
+                        </div>
+                    </td>
+                </tr>
             <?php endforeach; ?>
         </tbody>
     </table>

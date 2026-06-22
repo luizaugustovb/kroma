@@ -845,19 +845,28 @@ a:hover { color: var(--kroma-primary-light); }
     display: flex;
     gap: 16px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
     padding-bottom: 16px;
     align-items: flex-start;
+    width: 100%;
+    max-width: calc(100vw - var(--sidebar-width) - 48px);
+    min-width: 0;
+    scroll-snap-type: x proximity;
+    scrollbar-gutter: stable;
 }
 
 .kanban-column {
+    flex: 0 0 280px;
     min-width: 240px;
-    max-width: 240px;
+    max-width: 280px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-card);
     display: flex;
     flex-direction: column;
     max-height: calc(100vh - 180px);
+    scroll-snap-align: start;
 }
 
 .kanban-column-header {
@@ -920,6 +929,21 @@ a:hover { color: var(--kroma-primary-light); }
 .kanban-card.drag-over {
     border-color: var(--kroma-primary);
     background: rgba(108,99,255,0.05);
+}
+
+.producao-kanban-card.dragging {
+    opacity: 0.55;
+}
+
+.producao-kanban-dropzone {
+    min-height: 120px;
+    transition: var(--transition);
+}
+
+.producao-kanban-dropzone.drag-over {
+    outline: 2px dashed var(--kroma-primary-light);
+    outline-offset: -6px;
+    background: rgba(0, 163, 224, 0.08);
 }
 
 .kanban-card-name {
@@ -1119,11 +1143,198 @@ a:hover { color: var(--kroma-primary-light); }
 
     .kanban-board {
         gap: 12px;
+        max-width: calc(100vw - 32px);
     }
 
     .kanban-column {
-        min-width: 200px;
-        max-width: 200px;
+        flex-basis: 240px;
+        min-width: 220px;
+        max-width: 240px;
+    }
+}
+
+/* Impressão dedicada da Ordem de Serviço */
+.os-print-document {
+    display: none;
+}
+
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+
+    body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        overflow: visible !important;
+    }
+
+    body * {
+        visibility: hidden !important;
+    }
+
+    .os-print-document,
+    .os-print-document * {
+        visibility: visible !important;
+    }
+
+    .os-print-document {
+        display: block !important;
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        color: #111827;
+        background: #ffffff;
+    }
+
+    .os-print-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #00658d;
+    }
+
+    .os-print-logo {
+        max-width: 150px;
+        max-height: 54px;
+        object-fit: contain;
+        margin-bottom: 10px;
+    }
+
+    .os-print-kicker {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #00658d;
+        text-transform: uppercase;
+    }
+
+    .os-print-header h1 {
+        margin: 2px 0 0;
+        font-size: 28px;
+        line-height: 1.1;
+    }
+
+    .os-print-status {
+        min-width: 150px;
+        text-align: right;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+
+    .os-print-status strong,
+    .os-print-status span {
+        display: block;
+    }
+
+    .os-print-status span {
+        margin-top: 4px;
+        color: #475569;
+        font-size: 12px;
+    }
+
+    .os-print-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin: 18px 0;
+    }
+
+    .os-print-grid > div {
+        border: 1px solid #dbe3ea;
+        border-radius: 8px;
+        padding: 9px 10px;
+    }
+
+    .os-print-grid span {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+
+    .os-print-grid strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 13px;
+        color: #111827;
+    }
+
+    .os-print-section {
+        margin-top: 16px;
+        break-inside: avoid;
+    }
+
+    .os-print-section h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: #00658d;
+        text-transform: uppercase;
+    }
+
+    .os-print-section p {
+        margin: 0;
+        border: 1px solid #dbe3ea;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: 12px;
+    }
+
+    .os-print-file {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid #dbe3ea;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    .os-print-file img {
+        max-width: 210px;
+        max-height: 160px;
+        object-fit: contain;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+    }
+
+    .os-print-file strong,
+    .os-print-file span,
+    .os-print-table small {
+        display: block;
+    }
+
+    .os-print-file span,
+    .os-print-table small {
+        color: #64748b;
+        font-size: 11px;
+    }
+
+    .os-print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    .os-print-table th {
+        background: #eef6fb;
+        color: #0f172a;
+        text-align: left;
+        font-size: 10px;
+        text-transform: uppercase;
+    }
+
+    .os-print-table th,
+    .os-print-table td {
+        border: 1px solid #dbe3ea;
+        padding: 7px 8px;
+        vertical-align: top;
     }
 }
 

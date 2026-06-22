@@ -1,4 +1,7 @@
 <?php
+
+use App\Services\Auth;
+
 $statusClasses = [
     'ativo' => 'badge-success',
     'inativo' => 'badge-secondary',
@@ -49,7 +52,13 @@ $valorEstoque = array_sum(array_map(fn($m) => (float)$m['estoque_atual'] * (floa
 </div>
 
 <div class="row g-3">
-    <div class="col-xl-8">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0"><i class="bi bi-archive me-2 text-primary-kroma"></i>Materiais em Estoque</h6>
+            <?php if (Auth::temPerfil('administrador')): ?>
+                <a href="<?= APP_URL ?>/estoque/correcao" class="btn btn-warning btn-sm"><i class="bi bi-pencil-square"></i> Correção de Estoque</a>
+            <?php endif; ?>
+        </div>
         <div class="table-wrapper">
             <table class="table datatable">
                 <thead>
@@ -67,7 +76,7 @@ $valorEstoque = array_sum(array_map(fn($m) => (float)$m['estoque_atual'] * (floa
                 </thead>
                 <tbody>
                     <?php foreach ($materiais as $material): ?>
-                    <?php
+                        <?php
                         $disponivel = (float)$material['estoque_disponivel'];
                         $minimo = (float)$material['estoque_minimo'];
                         $alertaClass = 'badge-success';
@@ -82,53 +91,53 @@ $valorEstoque = array_sum(array_map(fn($m) => (float)$m['estoque_atual'] * (floa
                             $alertaClass = 'badge-warning';
                             $alertaLabel = 'Baixo';
                         }
-                    ?>
-                    <tr>
-                        <td><strong><?= htmlspecialchars($material['codigo'] ?? '-') ?></strong></td>
-                        <td>
-                            <div class="fw-bold"><?= htmlspecialchars($material['nome']) ?></div>
-                            <div style="font-size:12px;color:var(--text-muted)"><?= htmlspecialchars($material['localizacao'] ?: '-') ?></div>
-                        </td>
-                        <td><?= htmlspecialchars($material['categoria'] ?: '-') ?></td>
-                        <td><?= number_format((float)$material['estoque_atual'], 3, ',', '.') ?> <?= htmlspecialchars($material['unidade']) ?></td>
-                        <td><span class="badge badge-warning"><?= number_format((float)$material['estoque_reservado'], 3, ',', '.') ?></span></td>
-                        <td><strong><?= number_format($disponivel, 3, ',', '.') ?></strong></td>
-                        <td>R$ <?= number_format((float)$material['custo_atual'], 2, ',', '.') ?></td>
-                        <td><span class="badge <?= $alertaClass ?>"><?= $alertaLabel ?></span></td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
-                                <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
-                            </div>
-                        </td>
-                    </tr>
+                        ?>
+                        <tr>
+                            <td><strong><?= htmlspecialchars($material['codigo'] ?? '-') ?></strong></td>
+                            <td>
+                                <div class="fw-bold"><?= htmlspecialchars($material['nome']) ?></div>
+                                <div style="font-size:12px;color:var(--text-muted)"><?= htmlspecialchars($material['localizacao'] ?: '-') ?></div>
+                            </td>
+                            <td><?= htmlspecialchars($material['categoria'] ?: '-') ?></td>
+                            <td><?= number_format((float)$material['estoque_atual'], 3, ',', '.') ?> <?= htmlspecialchars($material['unidade']) ?></td>
+                            <td><span class="badge badge-warning"><?= number_format((float)$material['estoque_reservado'], 3, ',', '.') ?></span></td>
+                            <td><strong><?= number_format($disponivel, 3, ',', '.') ?></strong></td>
+                            <td>R$ <?= number_format((float)$material['custo_atual'], 2, ',', '.') ?></td>
+                            <td><span class="badge <?= $alertaClass ?>"><?= $alertaLabel ?></span></td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
+                                    <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
+                                </div>
+                            </td>
+                        </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="col-xl-4">
-        <div class="card h-100">
+    <div class="col-12">
+        <div class="card">
             <div class="card-header">
                 <h6 class="card-title"><i class="bi bi-clock-history me-2 text-info"></i>Movimentações Recentes</h6>
                 <span class="badge badge-info"><?= count($movimentacoes) ?></span>
             </div>
             <div class="p-3 d-flex flex-column gap-2">
                 <?php foreach ($movimentacoes as $mov): ?>
-                <div class="border-kroma rounded-kroma p-2">
-                    <div class="d-flex justify-content-between gap-2 mb-1">
-                        <strong><?= htmlspecialchars($mov['material_nome']) ?></strong>
-                        <span class="badge <?= $tipoClasses[$mov['tipo']] ?? 'badge-secondary' ?>"><?= $tipoMovLabels[$mov['tipo']] ?? $mov['tipo'] ?></span>
+                    <div class="border-kroma rounded-kroma p-2">
+                        <div class="d-flex justify-content-between gap-2 mb-1">
+                            <strong><?= htmlspecialchars($mov['material_nome']) ?></strong>
+                            <span class="badge <?= $tipoClasses[$mov['tipo']] ?? 'badge-secondary' ?>"><?= $tipoMovLabels[$mov['tipo']] ?? $mov['tipo'] ?></span>
+                        </div>
+                        <div class="small text-muted">
+                            <?= number_format((float)$mov['quantidade'], 3, ',', '.') ?>
+                            <?php if (!empty($mov['os_codigo'])): ?>
+                                · <?= htmlspecialchars($mov['os_codigo']) ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="small text-muted"><?= date('d/m/Y H:i', strtotime($mov['created_at'])) ?></div>
                     </div>
-                    <div class="small text-muted">
-                        <?= number_format((float)$mov['quantidade'], 3, ',', '.') ?>
-                        <?php if (!empty($mov['os_codigo'])): ?>
-                            · <?= htmlspecialchars($mov['os_codigo']) ?>
-                        <?php endif; ?>
-                    </div>
-                    <div class="small text-muted"><?= date('d/m/Y H:i', strtotime($mov['created_at'])) ?></div>
-                </div>
                 <?php endforeach; ?>
                 <?php if (empty($movimentacoes)): ?>
                     <span class="badge badge-secondary align-self-start">Sem movimentações</span>

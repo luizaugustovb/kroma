@@ -41,7 +41,7 @@ class PortalController
 
     public function __construct()
     {
-        AuthMiddleware::requer('portal');
+        AuthMiddleware::requerPerfil('cliente');
     }
 
     public function index(): void
@@ -185,8 +185,7 @@ class PortalController
             "SELECT id, codigo, titulo, status, total, validade, created_at
              FROM orcamentos
              WHERE cliente_id = ?
-             ORDER BY created_at DESC
-             LIMIT 20",
+             ORDER BY created_at DESC",
             [$clienteId]
         );
     }
@@ -199,8 +198,7 @@ class PortalController
                     (SELECT COUNT(*) FROM ordem_servico_etapas e WHERE e.ordem_servico_id = os.id AND e.status = 'concluida') AS etapas_concluidas
              FROM ordem_servicos os
              WHERE os.cliente_id = ?
-             ORDER BY FIELD(os.status, 'em_producao','aberta','aguardando','finalizada','cancelada'), os.data_prometida IS NULL, os.data_prometida, os.created_at DESC
-             LIMIT 20",
+             ORDER BY FIELD(os.status, 'em_producao','aberta','aguardando','finalizada','cancelada'), os.data_prometida IS NULL, os.data_prometida, os.created_at DESC",
             [$clienteId]
         );
     }
@@ -211,8 +209,7 @@ class PortalController
             "SELECT id, codigo, descricao, valor, valor_pago, vencimento, status
              FROM contas_receber
              WHERE cliente_id = ?
-             ORDER BY FIELD(status, 'aberto','parcial','pago','cancelado'), vencimento IS NULL, vencimento, created_at DESC
-             LIMIT 20",
+             ORDER BY FIELD(status, 'aberto','parcial','pago','cancelado'), vencimento IS NULL, vencimento, created_at DESC",
             [$clienteId]
         );
     }

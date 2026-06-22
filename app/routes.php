@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Definição de todas as rotas — KROMA PRINT ERP
  */
@@ -105,6 +106,8 @@ $router->post('/orcamentos/:id/editar', 'OrcamentoController@atualizar');
 $router->post('/orcamentos/:id/enviar', 'OrcamentoController@enviar');
 $router->post('/orcamentos/:id/aprovar', 'OrcamentoController@aprovar');
 $router->post('/orcamentos/:id/cancelar', 'OrcamentoController@cancelar');
+$router->post('/orcamentos/:id/upload-arquivo', 'OrcamentoController@uploadArquivo');
+$router->post('/orcamentos/:id/remover-arquivo', 'OrcamentoController@removerArquivo');
 
 // Produtos, categorias e processos
 $router->get('/produtos', 'ProdutoController@index');
@@ -125,6 +128,7 @@ $router->get('/producao/:id', 'ProducaoController@ver');
 $router->get('/producao/:id/editar', 'ProducaoController@editar');
 $router->post('/producao/:id/editar', 'ProducaoController@atualizar');
 $router->post('/producao/:id/status', 'ProducaoController@alterarStatus');
+$router->post('/producao/:id/material-real', 'ProducaoController@salvarMaterialReal');
 
 // Agenda de equipes e instalações
 $router->get('/agenda', 'AgendaController@index');
@@ -141,6 +145,8 @@ $router->post('/led/locacoes/:id/status', 'LedController@statusLocacao');
 
 // Estoque e materiais
 $router->get('/estoque', 'EstoqueController@index');
+$router->get('/estoque/correcao', 'EstoqueController@correcao');
+$router->post('/estoque/correcao', 'EstoqueController@salvarCorrecao');
 $router->get('/estoque/novo', 'EstoqueController@novo');
 $router->post('/estoque/novo', 'EstoqueController@criar');
 $router->get('/estoque/:id', 'EstoqueController@ver');

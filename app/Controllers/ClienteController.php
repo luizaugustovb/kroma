@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Controlador de Clientes — KROMA PRINT ERP
  */
@@ -24,7 +25,9 @@ class ClienteController
                  ORDER BY c.nome ASC"
             );
             $clientes = $stmt->fetchAll();
-        } catch (\Exception $e) { $clientes = []; }
+        } catch (\Exception $e) {
+            $clientes = [];
+        }
 
         $titulo      = 'Clientes';
         $subtitulo   = 'Carteira de clientes ativa';
@@ -73,6 +76,14 @@ class ClienteController
             $id = db()->lastInsertId();
 
             Auth::registrarAuditoria('clientes', 'criar', $id, null, $campos);
+
+            // Todo cliente com e-mail recebe acesso ao portal automaticamente.
+            if (!empty($campos['email'])) {
+                $this->criarAcessoENotificar((int)$id, $campos);
+            } elseif (!empty($campos['whatsapp'])) {
+                $this->enviarBoasVindas((int)$id, $campos, null);
+            }
+
             $_SESSION['flash_success'] = 'Cliente cadastrado com sucesso!';
             header('Location: ' . APP_URL . '/clientes/' . $id);
         } catch (\Exception $e) {
@@ -80,6 +91,87 @@ class ClienteController
             header('Location: ' . APP_URL . '/clientes/novo');
         }
         exit;
+    }
+
+    private function criarAcessoENotificar(int $clienteId, array $campos): void
+    {
+        try {
+            // Buscar perfil de portal/cliente
+            $perfil = db()->query("SELECT id FROM perfis WHERE nome = 'cliente' LIMIT 1")->fetch();
+            if (!$perfil) {
+                $perfil = db()->query("SELECT id FROM perfis ORDER BY id LIMIT 1")->fetch();
+            }
+            if (!$perfil) return;
+
+            $usuarioExistente = db()->prepare(
+                "SELECT u.id, p.nome AS perfil
+                 FROM usuarios u
+                 JOIN perfis p ON p.id = u.perfil_id
+                 WHERE u.email = ?
+                 LIMIT 1"
+            );
+            $usuarioExistente->execute([$campos['email']]);
+            $usuario = $usuarioExistente->fetch();
+            if ($usuario && ($usuario['perfil'] ?? '') === 'cliente') {
+                db()->prepare("UPDATE usuarios SET cliente_id = ?, perfil_id = ?, ativo = 1, updated_at = NOW() WHERE id = ?")
+                    ->execute([$clienteId, $perfil['id'], $usuario['id']]);
+                $this->enviarBoasVindas($clienteId, $campos, null);
+                return;
+            }
+            if ($usuario) {
+                $_SESSION['flash_warning'] = 'Cliente cadastrado, mas o e-mail já pertence a um usuário interno. Crie um acesso de cliente com outro e-mail.';
+                $this->enviarBoasVindas($clienteId, $campos, null);
+                return;
+            }
+
+            $senha = substr(bin2hex(random_bytes(5)), 0, 8);
+            $senhaHash = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
+
+            db()->prepare(
+                "INSERT INTO usuarios (nome, email, senha, perfil_id, cliente_id, ativo, created_at)
+                 VALUES (?, ?, ?, ?, ?, 1, NOW())"
+            )->execute([$campos['nome'], $campos['email'], $senhaHash, $perfil['id'], $clienteId]);
+
+            $this->enviarBoasVindas($clienteId, $campos, ['email' => $campos['email'], 'senha' => $senha]);
+        } catch (\Exception $e) {
+            // Não bloquear o cadastro do cliente por falha no acesso
+        }
+    }
+
+    private function enviarBoasVindas(int $clienteId, array $campos, ?array $credenciais): void
+    {
+        if (empty($campos['whatsapp'])) return;
+        try {
+            $empresa = db()->query("SELECT nome_fantasia, razao_social FROM empresas LIMIT 1")->fetch();
+            $nomeEmpresa = $empresa['nome_fantasia'] ?? $empresa['razao_social'] ?? APP_NAME;
+            $portalUrl = APP_URL . '/portal';
+            $loginUrl = APP_URL . '/login';
+
+            if ($credenciais) {
+                $msg = "Olá, *{$campos['nome']}*! Bem-vindo(a) à *{$nomeEmpresa}*!\n\n"
+                    . "Criamos seu acesso ao portal do cliente.\n\n"
+                    . "🔗 *Acesso:* {$loginUrl}\n"
+                    . "📧 *Usuário:* {$credenciais['email']}\n"
+                    . "🔑 *Senha:* {$credenciais['senha']}\n\n"
+                    . "Recomendamos alterar sua senha no primeiro acesso.\n\n"
+                    . "Qualquer dúvida, estamos à disposição!";
+            } else {
+                $msg = "Olá, *{$campos['nome']}*! Bem-vindo(a) à *{$nomeEmpresa}*!\n\n"
+                    . "Seu cadastro foi realizado com sucesso. Em breve entraremos em contato.\n\n"
+                    . "Acompanhe seus pedidos em: {$portalUrl}";
+            }
+
+            $wpp = new \App\Services\WhatsAppService();
+            $wpp->enviar([
+                'telefone' => $campos['whatsapp'],
+                'mensagem' => $msg,
+                'tipo' => 'sistema',
+                'origem' => 'Boas-vindas cliente',
+                'cliente_id' => $clienteId,
+            ]);
+        } catch (\Exception $e) {
+            // Não bloquear
+        }
     }
 
     public function ver(string $id): void
@@ -96,7 +188,9 @@ class ClienteController
             $stmt = db()->prepare("SELECT * FROM leads WHERE cliente_id = ? ORDER BY created_at DESC LIMIT 10");
             $stmt->execute([$id]);
             $leads = $stmt->fetchAll();
-        } catch (\Exception $e) { $leads = []; }
+        } catch (\Exception $e) {
+            $leads = [];
+        }
 
         $titulo      = htmlspecialchars($cliente['nome']);
         $subtitulo   = 'Ficha do Cliente';
@@ -218,7 +312,9 @@ class ClienteController
             );
             $stmt->execute([$id]);
             return $stmt->fetch() ?: null;
-        } catch (\Exception $e) { return null; }
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     private function extrairCampos(): array
@@ -265,6 +361,8 @@ class ClienteController
                  ORDER BY u.nome"
             );
             return $stmt->fetchAll();
-        } catch (\Exception $e) { return []; }
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }

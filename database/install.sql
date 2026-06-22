@@ -454,6 +454,7 @@ CREATE TABLE IF NOT EXISTS orcamentos (
     preco_minimo        DECIMAL(12,2) DEFAULT 0,
     lucro_previsto      DECIMAL(12,2) DEFAULT 0,
     total               DECIMAL(12,2) DEFAULT 0,
+    arquivo_projeto     VARCHAR(300),
     aprovado_at         DATETIME,
     created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -673,13 +674,16 @@ CREATE TABLE IF NOT EXISTS produtos (
     perecivel               TINYINT(1) DEFAULT 0,
     validade_dias           INT DEFAULT 0,
     status                  ENUM('ativo','inativo','em_revisao') DEFAULT 'ativo',
+    fornecedor_id           INT UNSIGNED DEFAULT NULL,
     created_at              DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at              DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (categoria_id) REFERENCES categorias_produtos(id) ON DELETE SET NULL,
+    FOREIGN KEY (fornecedor_id) REFERENCES fornecedores(id) ON DELETE SET NULL,
     INDEX idx_nome (nome),
     INDEX idx_codigo (codigo),
     INDEX idx_status (status),
-    INDEX idx_categoria (categoria_id)
+    INDEX idx_categoria (categoria_id),
+    INDEX idx_fornecedor (fornecedor_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
@@ -1432,7 +1436,7 @@ SELECT p.id, m.slug,
        0
 FROM perfis p
 JOIN modulos m ON m.slug IN ('portal')
-WHERE p.nome IN ('diretor','gerente','comercial','vendedor','recepcao','cliente')
+WHERE p.nome IN ('cliente')
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),
@@ -1444,6 +1448,16 @@ SELECT p.id, m.slug, 1, 1, 1, CASE WHEN p.nome IN ('diretor','gerente') THEN 1 E
 FROM perfis p
 JOIN modulos m ON m.slug IN ('produtos','producao','estoque','compras')
 WHERE p.nome IN ('diretor','gerente','comercial','vendedor','producao','estoque','financeiro')
+ON DUPLICATE KEY UPDATE
+    pode_ver = VALUES(pode_ver),
+    pode_criar = VALUES(pode_criar),
+    pode_editar = VALUES(pode_editar),
+    pode_excluir = VALUES(pode_excluir);
+
+INSERT INTO permissoes (perfil_id, modulo_slug, pode_ver, pode_criar, pode_editar, pode_excluir)
+SELECT p.id, 'producao', 1, 0, 1, 0
+FROM perfis p
+WHERE p.nome = 'designer'
 ON DUPLICATE KEY UPDATE
     pode_ver = VALUES(pode_ver),
     pode_criar = VALUES(pode_criar),

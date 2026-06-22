@@ -1,5 +1,7 @@
 <?php
+
 use App\Services\Auth;
+
 $csrfToken = Auth::csrfToken();
 $empresa = $empresa ?? [];
 ?>
@@ -87,42 +89,13 @@ $empresa = $empresa ?? [];
                     <h6 class="card-title"><i class="bi bi-plug me-2 text-primary-kroma"></i>Integrações</h6>
                 </div>
                 <div class="p-3">
-                    <label class="form-label">Token WhatsApp Viicio</label>
-                    <input class="form-control mb-3" name="token_whatsapp" value="<?= htmlspecialchars($empresa['token_whatsapp'] ?? '') ?>">
-                    <label class="form-label">Endpoint WhatsApp Viicio</label>
-                    <input class="form-control mb-3" name="endpoint_whatsapp" value="<?= htmlspecialchars($empresa['endpoint_whatsapp'] ?? '') ?>" placeholder="https://api.viicio.com/...">
-                    <label class="form-label">Modo WhatsApp</label>
-                    <select class="form-select mb-3" name="modo_whatsapp">
-                        <option value="simulado" <?= ($empresa['modo_whatsapp'] ?? 'simulado') === 'simulado' ? 'selected' : '' ?>>Simulado</option>
-                        <option value="producao" <?= ($empresa['modo_whatsapp'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção</option>
-                    </select>
-                    <label class="form-label">Chave OpenAI</label>
-                    <input class="form-control mb-3" name="chave_openai" value="<?= htmlspecialchars($empresa['chave_openai'] ?? '') ?>">
-                    <label class="form-label">Chave Gemini</label>
-                    <input class="form-control mb-3" name="chave_gemini" value="<?= htmlspecialchars($empresa['chave_gemini'] ?? '') ?>">
-                    <label class="form-label">Modo IA</label>
-                    <select class="form-select mb-3" name="modo_ia">
-                        <option value="simulado" <?= ($empresa['modo_ia'] ?? 'simulado') === 'simulado' ? 'selected' : '' ?>>Simulado</option>
-                        <option value="producao" <?= ($empresa['modo_ia'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção</option>
-                    </select>
-                    <label class="form-label">Provedor IA</label>
-                    <select class="form-select mb-3" name="provedor_ia">
-                        <option value="openai" <?= ($empresa['provedor_ia'] ?? 'openai') === 'openai' ? 'selected' : '' ?>>OpenAI</option>
-                        <option value="gemini" <?= ($empresa['provedor_ia'] ?? '') === 'gemini' ? 'selected' : '' ?>>Gemini</option>
-                    </select>
-                    <label class="form-label">Modelo IA</label>
-                    <input class="form-control mb-3" name="modelo_ia" value="<?= htmlspecialchars($empresa['modelo_ia'] ?? 'gpt-5.5') ?>">
-                    <label class="form-label">Limite diário IA</label>
-                    <input class="form-control mb-3" type="number" min="1" name="limite_ia_diario" value="<?= (int)($empresa['limite_ia_diario'] ?? 100) ?>">
-                    <label class="form-label">Prompt padrão IA</label>
-                    <textarea class="form-control mb-3" name="prompt_padrao_ia" rows="3" placeholder="Tom, regras comerciais e limites da IA"><?= htmlspecialchars($empresa['prompt_padrao_ia'] ?? '') ?></textarea>
-                    <label class="form-label">Chave Asaas</label>
-                    <input class="form-control mb-3" name="chave_asaas" value="<?= htmlspecialchars($empresa['chave_asaas'] ?? '') ?>">
-                    <label class="form-label">Ambiente Asaas</label>
-                    <select class="form-select" name="ambiente_asaas">
-                        <option value="sandbox" <?= ($empresa['ambiente_asaas'] ?? 'sandbox') === 'sandbox' ? 'selected' : '' ?>>Sandbox</option>
-                        <option value="producao" <?= ($empresa['ambiente_asaas'] ?? '') === 'producao' ? 'selected' : '' ?>>Produção</option>
-                    </select>
+                    <div class="d-flex align-items-center gap-3 p-2 border-kroma rounded-kroma">
+                        <i class="bi bi-info-circle text-info fs-5"></i>
+                        <div>
+                            <div class="fw-bold">Configurações de integração centralizadas</div>
+                            <div class="small text-muted">Configure WhatsApp, IA e Asaas diretamente em <a href="<?= APP_URL ?>/integracoes">Integrações</a>.</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

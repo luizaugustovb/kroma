@@ -156,6 +156,16 @@ $statusClasses = [
                 </form>
                 <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/aprovar" method="POST" data-loading>
                     <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                    <?php if (!empty($designers)): ?>
+                    <label class="form-label">Direcionar para designer</label>
+                    <select class="form-select mb-2" name="designer_id" required>
+                        <?php foreach ($designers as $designer): ?>
+                        <option value="<?= $designer['id'] ?>"><?= htmlspecialchars($designer['nome']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <?php else: ?>
+                    <span class="badge badge-warning align-self-start mb-2">Nenhum designer ativo cadastrado</span>
+                    <?php endif; ?>
                     <button class="btn btn-success w-100" type="submit"><i class="bi bi-check2-circle"></i> Aprovar e Gerar Fluxo</button>
                 </form>
                 <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/cancelar" method="POST" data-loading>

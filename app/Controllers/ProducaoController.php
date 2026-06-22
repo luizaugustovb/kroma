@@ -32,29 +32,44 @@ class ProducaoController
 
     public function __construct()
     {
-        AuthMiddleware::requer('producao');
+        AuthMiddleware::handle();
+        if (!Auth::pode('producao') && !Auth::temPerfil('designer')) {
+            $_SESSION['flash_error'] = 'Você não tem permissão para acessar esta área.';
+            header('Location: ' . APP_URL . '/dashboard');
+            exit;
+        }
     }
 
     public function index(): void
     {
+        [$whereClause, $params] = $this->buildPeriodFilter('os.created_at');
+        [$escopoClause, $escopoParams] = $this->escopoProducao('os');
+        $whereClause = '(' . $whereClause . ') AND ' . $escopoClause;
+        $params = array_merge($params, $escopoParams);
+        $filtro = $this->filtroAtual();
+
         try {
-            $ordens = db()->query(
-                "SELECT os.*, c.nome AS cliente_nome, u.nome AS responsavel_nome,
+            $sql = "SELECT os.*, c.nome AS cliente_nome, u.nome AS responsavel_nome,
                     (SELECT COUNT(*) FROM ordem_servico_itens i WHERE i.ordem_servico_id = os.id) AS total_itens,
                     (SELECT COUNT(*) FROM ordem_servico_etapas e WHERE e.ordem_servico_id = os.id) AS total_etapas,
                     (SELECT COUNT(*) FROM ordem_servico_etapas e WHERE e.ordem_servico_id = os.id AND e.status = 'concluida') AS etapas_concluidas
                  FROM ordem_servicos os
                  LEFT JOIN clientes c ON c.id = os.cliente_id
                  LEFT JOIN usuarios u ON u.id = os.responsavel_id
-                 ORDER BY FIELD(os.status, 'em_producao','aberta','aguardando','finalizada','cancelada'), os.data_prometida IS NULL, os.data_prometida, os.created_at DESC"
-            )->fetchAll();
+                 WHERE $whereClause
+                 ORDER BY FIELD(os.status, 'em_producao','aberta','aguardando','finalizada','cancelada'), os.data_prometida IS NULL, os.data_prometida, os.created_at DESC";
+            $stmt = db()->prepare($sql);
+            $stmt->execute($params);
+            $ordens = $stmt->fetchAll();
         } catch (\Exception $e) {
             $ordens = [];
         }
 
         $titulo = 'Produção';
         $subtitulo = 'Fila de ordens de serviço, etapas produtivas e prazos';
-        $headerActions = '<a href="' . APP_URL . '/producao/novo" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nova OS</a>';
+        $headerActions = Auth::temPerfil('designer')
+            ? ''
+            : '<a href="' . APP_URL . '/producao/novo" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Nova OS</a>';
         $statusLabels = $this->statusLabels;
         $prioridadeLabels = $this->prioridadeLabels;
 
@@ -66,6 +81,12 @@ class ProducaoController
 
     public function novo(): void
     {
+        if (Auth::temPerfil('designer')) {
+            $_SESSION['flash_error'] = 'OS de designer deve ser criada a partir de orçamento aprovado.';
+            header('Location: ' . APP_URL . '/producao');
+            exit;
+        }
+
         $ordem = [
             'orcamento_id' => $_GET['orcamento_id'] ?? null,
             'cliente_id' => null,
@@ -109,6 +130,12 @@ class ProducaoController
 
     public function criar(): void
     {
+        if (Auth::temPerfil('designer')) {
+            $_SESSION['flash_error'] = 'OS de designer deve ser criada a partir de orçamento aprovado.';
+            header('Location: ' . APP_URL . '/producao');
+            exit;
+        }
+
         $this->salvar();
     }
 
@@ -124,6 +151,7 @@ class ProducaoController
         $itens = $this->itens($id);
         $etapas = $this->etapas($id);
         $reservasEstoque = $this->movimentacoesEstoque($id);
+        $arquivoProjeto = !empty($ordem['orcamento_id']) ? $this->arquivoProjetoOrcamento((string)$ordem['orcamento_id']) : null;
         $statusLabels = $this->statusLabels;
         $prioridadeLabels = $this->prioridadeLabels;
         $etapaStatusLabels = $this->etapaStatusLabels;
@@ -173,6 +201,13 @@ class ProducaoController
             exit;
         }
 
+        $ordemAtual = $this->buscar($id);
+        if (!$ordemAtual) {
+            $_SESSION['flash_error'] = 'Ordem de serviço não encontrada ou sem permissão.';
+            header('Location: ' . APP_URL . '/producao');
+            exit;
+        }
+
         $status = $_POST['status'] ?? '';
         if (!isset($this->statusLabels[$status])) {
             $_SESSION['flash_error'] = 'Status de OS inválido.';
@@ -196,13 +231,61 @@ class ProducaoController
         try {
             db()->prepare('UPDATE ordem_servicos SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
             Auth::registrarAuditoria('ordem_servicos', 'status_' . $status, (int)$id);
+
+            if (($ordemAtual['status'] ?? null) !== $status) {
+                $this->notificarStatusOS((int)$id, $status);
+            }
+
             $_SESSION['flash_success'] = 'Status da OS atualizado.';
         } catch (\Exception $e) {
             $_SESSION['flash_error'] = 'Erro ao atualizar status da OS.';
         }
 
-        header('Location: ' . APP_URL . '/producao/' . $id);
+        // Ao finalizar, perguntar sobre agendamento de instalação
+        if ($status === 'finalizada') {
+            header('Location: ' . APP_URL . '/producao/' . $id . '?confirmar_instalacao=1');
+        } else {
+            header('Location: ' . APP_URL . '/producao/' . $id);
+        }
         exit;
+    }
+
+    private function notificarStatusOS(int $id, string $status): void
+    {
+        if (!in_array($status, ['em_producao', 'finalizada'], true)) return;
+        try {
+            $stmt = db()->prepare(
+                "SELECT os.*, c.nome AS cliente_nome, c.whatsapp AS cliente_whatsapp, c.id AS cid
+                 FROM ordem_servicos os
+                 LEFT JOIN clientes c ON c.id = os.cliente_id
+                 WHERE os.id = ?"
+            );
+            $stmt->execute([$id]);
+            $os = $stmt->fetch();
+            if (!$os || empty($os['cliente_whatsapp'])) return;
+
+            if ($status === 'em_producao') {
+                $msg = "Olá, *{$os['cliente_nome']}*!\n\n"
+                    . "Sua OS *{$os['codigo']}* — _{$os['titulo']}_ *entrou em produção*. Assim que estiver pronta, avisaremos por aqui!\n\n"
+                    . "Equipe " . (defined('APP_NAME') ? APP_NAME : 'KROMA PRINT');
+            } else {
+                $msg = "Olá, *{$os['cliente_nome']}*!\n\n"
+                    . "Sua OS *{$os['codigo']}* — _{$os['titulo']}_ foi *concluída* e está pronta!\n\n"
+                    . "Entre em contato para combinar a retirada ou entrega.\n\n"
+                    . "Equipe " . (defined('APP_NAME') ? APP_NAME : 'KROMA PRINT');
+            }
+
+            $wpp = new \App\Services\WhatsAppService();
+            $wpp->enviar([
+                'telefone' => $os['cliente_whatsapp'],
+                'mensagem' => $msg,
+                'tipo' => $status === 'em_producao' ? 'producao' : 'pronto',
+                'origem' => 'OS status: ' . $status,
+                'cliente_id' => $os['cid'],
+            ]);
+        } catch (\Exception $e) {
+            // Não bloqueia o fluxo principal
+        }
     }
 
     public function etapaStatus(string $id): void
@@ -229,9 +312,12 @@ class ProducaoController
 
         $sets = ['status = ?', 'observacao = ?'];
         $params = [$status, trim($_POST['observacao'] ?? '') ?: $etapa['observacao']];
+        $notificarInicio = false;
         if ($status === 'em_producao') {
             $sets[] = 'data_inicio = COALESCE(data_inicio, NOW())';
-            db()->prepare("UPDATE ordem_servicos SET status = 'em_producao', data_inicio = COALESCE(data_inicio, NOW()), updated_at = NOW() WHERE id = ? AND status = 'aberta'")->execute([$etapa['ordem_servico_id']]);
+            $stmtOs = db()->prepare("UPDATE ordem_servicos SET status = 'em_producao', data_inicio = COALESCE(data_inicio, NOW()), updated_at = NOW() WHERE id = ? AND status = 'aberta'");
+            $stmtOs->execute([$etapa['ordem_servico_id']]);
+            $notificarInicio = $stmtOs->rowCount() > 0;
         }
         if ($status === 'concluida') {
             $sets[] = 'data_fim = NOW()';
@@ -241,14 +327,18 @@ class ProducaoController
 
         try {
             db()->prepare('UPDATE ordem_servico_etapas SET ' . implode(', ', $sets) . ' WHERE id = ?')->execute($params);
-            $this->sincronizarConclusao((int)$etapa['ordem_servico_id']);
+            if ($notificarInicio) {
+                $this->notificarStatusOS((int)$etapa['ordem_servico_id'], 'em_producao');
+            }
+            $finalizouOs = $this->sincronizarConclusao((int)$etapa['ordem_servico_id']);
             Auth::registrarAuditoria('ordem_servico_etapas', 'status_' . $status, (int)$id);
             $_SESSION['flash_success'] = 'Etapa atualizada.';
         } catch (\Exception $e) {
             $_SESSION['flash_error'] = 'Erro ao atualizar etapa.';
         }
 
-        header('Location: ' . APP_URL . '/producao/' . $etapa['ordem_servico_id']);
+        $sufixoInstalacao = !empty($finalizouOs) ? '?confirmar_instalacao=1' : '';
+        header('Location: ' . APP_URL . '/producao/' . $etapa['ordem_servico_id'] . $sufixoInstalacao);
         exit;
     }
 
@@ -262,6 +352,15 @@ class ProducaoController
 
         $dados = $this->extrairDados();
         $itens = $this->extrairItens();
+        $ordemExistente = $id ? $this->buscar($id) : null;
+        if ($id && !$ordemExistente) {
+            $_SESSION['flash_error'] = 'Ordem de serviço não encontrada ou sem permissão.';
+            header('Location: ' . APP_URL . '/producao');
+            exit;
+        }
+        if (!Auth::temPerfil('administrador')) {
+            $dados['responsavel_id'] = $id && !empty($ordemExistente['responsavel_id']) ? (int)$ordemExistente['responsavel_id'] : Auth::id();
+        }
         if ($dados['titulo'] === '') {
             $_SESSION['flash_error'] = 'Título da OS é obrigatório.';
             header('Location: ' . APP_URL . '/producao' . ($id ? '/' . $id . '/editar' : '/novo'));
@@ -440,21 +539,34 @@ class ProducaoController
         }
     }
 
-    private function sincronizarConclusao(int $ordemId): void
+    private function sincronizarConclusao(int $ordemId): bool
     {
         $stmt = db()->prepare("SELECT COUNT(*) FROM ordem_servico_etapas WHERE ordem_servico_id = ? AND status NOT IN ('concluida','cancelada')");
         $stmt->execute([$ordemId]);
         if ((int)$stmt->fetchColumn() === 0) {
-            db()->prepare("UPDATE ordem_servicos SET status = 'finalizada', data_finalizacao = COALESCE(data_finalizacao, NOW()), updated_at = NOW() WHERE id = ? AND status NOT IN ('finalizada','cancelada')")->execute([$ordemId]);
+            $update = db()->prepare("UPDATE ordem_servicos SET status = 'finalizada', data_finalizacao = COALESCE(data_finalizacao, NOW()), updated_at = NOW() WHERE id = ? AND status NOT IN ('finalizada','cancelada')");
+            $update->execute([$ordemId]);
             db()->prepare("UPDATE ordem_servico_itens SET status = 'concluido' WHERE ordem_servico_id = ? AND status <> 'cancelado'")->execute([$ordemId]);
+            if ($update->rowCount() > 0) {
+                $this->notificarStatusOS($ordemId, 'finalizada');
+                return true;
+            }
         }
+
+        return false;
     }
 
     private function contextoFormulario(): array
     {
         return [
             'clientes' => $this->query("SELECT id, nome FROM clientes WHERE status = 'ativo' ORDER BY nome LIMIT 500"),
-            'usuarios' => $this->query("SELECT id, nome FROM usuarios WHERE ativo = 1 ORDER BY nome"),
+            'usuarios' => $this->query(
+                "SELECT u.id, u.nome
+                 FROM usuarios u
+                 LEFT JOIN perfis p ON p.id = u.perfil_id
+                 WHERE u.ativo = 1 AND (p.nome = 'designer' OR p.nome IS NULL)
+                 ORDER BY u.nome"
+            ),
             'produtos' => $this->query("SELECT id, nome, codigo, unidade, largura_padrao, altura_padrao FROM produtos WHERE status = 'ativo' ORDER BY nome"),
             'processos' => $this->query("SELECT * FROM processos_produtivos WHERE ativo = 1 ORDER BY setor, nome"),
             'orcamentos' => $this->query("SELECT id, codigo, titulo FROM orcamentos WHERE status = 'aprovado' ORDER BY aprovado_at DESC, created_at DESC LIMIT 200"),
@@ -463,18 +575,51 @@ class ProducaoController
         ];
     }
 
+    private function escopoProducao(string $alias = 'os'): array
+    {
+        if (!Auth::temPerfil('designer')) {
+            return ['1=1', []];
+        }
+
+        return ["$alias.responsavel_id = ?", [Auth::id()]];
+    }
+
+    private function arquivoProjetoOrcamento(string $orcamentoId): ?array
+    {
+        try {
+            $stmt = db()->prepare("SELECT arquivo_projeto FROM orcamentos WHERE id = ? LIMIT 1");
+            $stmt->execute([$orcamentoId]);
+            $arquivo = $stmt->fetchColumn();
+            if (!$arquivo) {
+                return null;
+            }
+
+            $nome = basename((string)$arquivo);
+            $ext = strtolower(pathinfo($nome, PATHINFO_EXTENSION));
+            return [
+                'nome' => $nome,
+                'url' => APP_URL . '/public/uploads/orcamentos/' . rawurlencode($nome),
+                'is_image' => in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true),
+                'ext' => $ext,
+            ];
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     private function buscar(string $id): ?array
     {
         try {
+            [$escopoClause, $escopoParams] = $this->escopoProducao('os');
             $stmt = db()->prepare(
                 "SELECT os.*, c.nome AS cliente_nome, u.nome AS responsavel_nome, o.codigo AS orcamento_codigo
                  FROM ordem_servicos os
                  LEFT JOIN clientes c ON c.id = os.cliente_id
                  LEFT JOIN usuarios u ON u.id = os.responsavel_id
                  LEFT JOIN orcamentos o ON o.id = os.orcamento_id
-                 WHERE os.id = ?"
+                 WHERE os.id = ? AND $escopoClause"
             );
-            $stmt->execute([$id]);
+            $stmt->execute(array_merge([$id], $escopoParams));
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) {
             return null;
@@ -484,8 +629,14 @@ class ProducaoController
     private function buscarEtapa(string $id): ?array
     {
         try {
-            $stmt = db()->prepare("SELECT * FROM ordem_servico_etapas WHERE id = ?");
-            $stmt->execute([$id]);
+            [$escopoClause, $escopoParams] = $this->escopoProducao('os');
+            $stmt = db()->prepare(
+                "SELECT e.*
+                 FROM ordem_servico_etapas e
+                 JOIN ordem_servicos os ON os.id = e.ordem_servico_id
+                 WHERE e.id = ? AND $escopoClause"
+            );
+            $stmt->execute(array_merge([$id], $escopoParams));
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) {
             return null;
@@ -628,6 +779,114 @@ class ProducaoController
             'acabamento' => '',
             'arquivo_ref' => '',
             'status' => 'pendente',
+        ];
+    }
+
+    // -------------------------
+    // Otimização de material real
+    // -------------------------
+    public function salvarMaterialReal(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/producao/' . $id);
+            exit;
+        }
+
+        if (!Auth::temPerfil(['administrador', 'producao'])) {
+            $_SESSION['flash_error'] = 'Sem permissão.';
+            header('Location: ' . APP_URL . '/producao/' . $id);
+            exit;
+        }
+
+        if (!$this->buscar($id)) {
+            $_SESSION['flash_error'] = 'Ordem de serviço não encontrada ou sem permissão.';
+            header('Location: ' . APP_URL . '/producao');
+            exit;
+        }
+
+        $obs = trim($_POST['obs_otimizacao'] ?? '');
+
+        try {
+            $pdo = db();
+            $pdo->beginTransaction();
+
+            // Atualiza itens individuais
+            $itemIds     = $_POST['item_id']       ?? [];
+            $materialReal = $_POST['material_real'] ?? [];
+            $areaReal     = $_POST['area_real']     ?? [];
+            $custoReal    = $_POST['custo_real']    ?? [];
+
+            foreach ($itemIds as $i => $itemId) {
+                $itemId = (int)$itemId;
+                if (!$itemId) continue;
+                $pdo->prepare(
+                    "UPDATE ordem_servico_itens
+                     SET material_real = ?, area_real = ?, custo_real = ?
+                     WHERE id = ? AND ordem_servico_id = ?"
+                )->execute([
+                    trim($materialReal[$i] ?? '') ?: null,
+                    $this->numero($areaReal[$i] ?? 0) ?: null,
+                    $this->numero($custoReal[$i] ?? 0) ?: null,
+                    $itemId,
+                    (int)$id,
+                ]);
+            }
+
+            // Recalcula custo_real total da OS
+            $stmt = $pdo->prepare("SELECT SUM(COALESCE(custo_real, 0)) FROM ordem_servico_itens WHERE ordem_servico_id = ?");
+            $stmt->execute([$id]);
+            $custoRealTotal = (float)$stmt->fetchColumn();
+
+            $pdo->prepare(
+                "UPDATE ordem_servicos SET custo_real = ?, obs_otimizacao = ?, updated_at = NOW() WHERE id = ?"
+            )->execute([$custoRealTotal ?: null, $obs ?: null, $id]);
+
+            Auth::registrarAuditoria('ordem_servicos', 'material_real', (int)$id);
+            $pdo->commit();
+            $_SESSION['flash_success'] = 'Material real salvo. Margem real recalculada.';
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+            $_SESSION['flash_error'] = 'Erro: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/producao/' . $id);
+        exit;
+    }
+
+    // -------------------------
+    // Helpers de filtro de período
+    // -------------------------
+    private function buildPeriodFilter(string $campo): array
+    {
+        $periodo = $_GET['periodo'] ?? 'todos';
+        $de  = $_GET['de']  ?? '';
+        $ate = $_GET['ate'] ?? '';
+
+        if ($de  && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $de))  $de  = '';
+        if ($ate && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $ate)) $ate = '';
+
+        if ($de && $ate) {
+            return ["$campo BETWEEN ? AND ?", [$de . ' 00:00:00', $ate . ' 23:59:59']];
+        }
+        switch ($periodo) {
+            case 'hoje':
+                return ["DATE($campo) = CURDATE()", []];
+            case 'semana':
+                return ["$campo >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)", []];
+            case 'mes':
+                return ["$campo >= DATE_FORMAT(CURDATE(), '%Y-%m-01')", []];
+            default:
+                return ['1=1', []];
+        }
+    }
+
+    private function filtroAtual(): array
+    {
+        return [
+            'periodo' => $_GET['periodo'] ?? 'todos',
+            'de'      => $_GET['de']  ?? '',
+            'ate'     => $_GET['ate'] ?? '',
         ];
     }
 }

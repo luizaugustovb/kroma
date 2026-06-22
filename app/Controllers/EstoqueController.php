@@ -383,4 +383,121 @@ class EstoqueController
         }
         return (float)str_replace(['.', ','], ['', '.'], preg_replace('/[^0-9,.-]/', '', (string)$valor));
     }
+
+    public function correcao(): void
+    {
+        if (!Auth::temPerfil('administrador')) {
+            $_SESSION['flash_error'] = 'Acesso restrito a administradores.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        try {
+            $materiais = db()->query(
+                "SELECT m.*, (m.estoque_atual - m.estoque_reservado) AS estoque_disponivel
+                 FROM materiais m WHERE m.status = 'ativo' ORDER BY m.nome"
+            )->fetchAll();
+        } catch (\Exception $e) {
+            $materiais = [];
+        }
+
+        $titulo = 'Correção de Estoque';
+        $subtitulo = 'Ajuste de saldo e custo dos materiais — somente administradores';
+        $breadcrumbs = [['label' => 'Estoque', 'url' => '/estoque'], ['label' => 'Correção', 'url' => '']];
+        $csrfToken = Auth::csrfToken();
+
+        ob_start();
+        require APP_PATH . '/Views/estoque/correcao.php';
+        $content = ob_get_clean();
+        require APP_PATH . '/Views/layouts/main.php';
+    }
+
+    public function salvarCorrecao(): void
+    {
+        if (!Auth::temPerfil('administrador')) {
+            $_SESSION['flash_error'] = 'Acesso restrito a administradores.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/estoque/correcao');
+            exit;
+        }
+
+        $ids = $_POST['material_id'] ?? [];
+        $quantidades = $_POST['estoque_novo'] ?? [];
+        $custos = $_POST['custo_novo'] ?? [];
+        $justificativas = $_POST['justificativa'] ?? [];
+        $alterados = 0;
+
+        try {
+            $pdo = db();
+            $pdo->beginTransaction();
+
+            foreach ($ids as $i => $id) {
+                $id = (int)$id;
+                if ($id <= 0) continue;
+
+                $novaQtd = isset($quantidades[$i]) && $quantidades[$i] !== '' ? $this->numero($quantidades[$i]) : null;
+                $novoCusto = isset($custos[$i]) && $custos[$i] !== '' ? $this->numero($custos[$i]) : null;
+                $justificativa = trim($justificativas[$i] ?? 'Correção administrativa');
+
+                if ($novaQtd === null && $novoCusto === null) continue;
+
+                $stmt = $pdo->prepare("SELECT * FROM materiais WHERE id = ? FOR UPDATE");
+                $stmt->execute([$id]);
+                $material = $stmt->fetch();
+                if (!$material) continue;
+
+                $saldoAnterior = (float)$material['estoque_atual'];
+                $saldoPosterior = $novaQtd !== null ? $novaQtd : $saldoAnterior;
+                $custoFinal = $novoCusto !== null ? $novoCusto : (float)$material['custo_atual'];
+
+                $updates = ['updated_at = NOW()'];
+                $params = [];
+                if ($novaQtd !== null) {
+                    $updates[] = 'estoque_atual = ?';
+                    $params[] = $saldoPosterior;
+                }
+                if ($novoCusto !== null) {
+                    $updates[] = 'custo_atual = ?';
+                    $params[] = $custoFinal;
+                }
+                $params[] = $id;
+                $pdo->prepare('UPDATE materiais SET ' . implode(', ', $updates) . ' WHERE id = ?')->execute($params);
+
+                if ($novaQtd !== null) {
+                    $pdo->prepare(
+                        "INSERT INTO estoque_movimentacoes
+                         (material_id, usuario_id, tipo, origem, quantidade, custo_unitario, saldo_anterior, saldo_posterior, reservado_anterior, reservado_posterior, observacao, created_at)
+                         VALUES (?, ?, 'ajuste', 'Correção de estoque', ?, ?, ?, ?, ?, ?, ?, NOW())"
+                    )->execute([
+                        $id,
+                        Auth::id(),
+                        abs($saldoPosterior - $saldoAnterior),
+                        $custoFinal,
+                        $saldoAnterior,
+                        $saldoPosterior,
+                        (float)$material['estoque_reservado'],
+                        (float)$material['estoque_reservado'],
+                        $justificativa,
+                    ]);
+                }
+
+                Auth::registrarAuditoria('materiais', 'correcao_estoque', $id, ['saldo' => $saldoAnterior, 'custo' => $material['custo_atual']], ['saldo' => $saldoPosterior, 'custo' => $custoFinal]);
+                $alterados++;
+            }
+
+            $pdo->commit();
+            $_SESSION['flash_success'] = "Correção aplicada a {$alterados} material(is).";
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+            $_SESSION['flash_error'] = 'Erro na correção: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/estoque/correcao');
+        exit;
+    }
 }

@@ -1,4 +1,5 @@
 <?php
+
 use App\Services\Auth;
 
 $csrfToken = Auth::csrfToken();
@@ -8,11 +9,13 @@ $produtoProcessos = array_map('strval', $produtoProcessos ?? []);
 $produtoAcabamentos = array_map('strval', $produtoAcabamentos ?? []);
 $produtoAcabamentosObrigatorios = array_map('strval', $produtoAcabamentosObrigatorios ?? []);
 
-function produtoMoneyInput($value): string {
+function produtoMoneyInput($value): string
+{
     return number_format((float)($value ?? 0), 2, ',', '.');
 }
 
-function produtoDecimalInput($value): string {
+function produtoDecimalInput($value): string
+{
     $value = (float)($value ?? 0);
     return rtrim(rtrim(number_format($value, 4, ',', '.'), '0'), ',');
 }
@@ -43,9 +46,9 @@ function produtoDecimalInput($value): string {
                             <select class="form-select" name="categoria_id">
                                 <option value="">-- Sem categoria --</option>
                                 <?php foreach ($contexto['categorias'] as $categoria): ?>
-                                <option value="<?= $categoria['id'] ?>" <?= (string)($produto['categoria_id'] ?? '') === (string)$categoria['id'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($categoria['nome']) ?>
-                                </option>
+                                    <option value="<?= $categoria['id'] ?>" <?= (string)($produto['categoria_id'] ?? '') === (string)$categoria['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($categoria['nome']) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -53,7 +56,7 @@ function produtoDecimalInput($value): string {
                             <label class="form-label">Tipo</label>
                             <select class="form-select" name="tipo">
                                 <?php foreach ($contexto['tipoLabels'] as $value => $label): ?>
-                                <option value="<?= $value ?>" <?= ($produto['tipo'] ?? 'produto') === $value ? 'selected' : '' ?>><?= $label ?></option>
+                                    <option value="<?= $value ?>" <?= ($produto['tipo'] ?? 'produto') === $value ? 'selected' : '' ?>><?= $label ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -73,7 +76,16 @@ function produtoDecimalInput($value): string {
                             <label class="form-label">Status</label>
                             <select class="form-select" name="status">
                                 <?php foreach ($contexto['statusLabels'] as $value => $label): ?>
-                                <option value="<?= $value ?>" <?= ($produto['status'] ?? 'ativo') === $value ? 'selected' : '' ?>><?= $label ?></option>
+                                    <option value="<?= $value ?>" <?= ($produto['status'] ?? 'ativo') === $value ? 'selected' : '' ?>><?= $label ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fornecedor padrão</label>
+                            <select class="form-select" name="fornecedor_id">
+                                <option value="">-- Nenhum --</option>
+                                <?php foreach ($contexto['fornecedores'] as $forn): ?>
+                                    <option value="<?= $forn['id'] ?>" <?= (string)($produto['fornecedor_id'] ?? '') === (string)$forn['id'] ? 'selected' : '' ?>><?= htmlspecialchars($forn['nome']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -121,18 +133,18 @@ function produtoDecimalInput($value): string {
                 <div class="p-3">
                     <div class="row g-2">
                         <?php foreach ($contexto['processos'] as $processo): ?>
-                        <div class="col-md-6">
-                            <label class="border-kroma rounded-kroma p-2 d-flex gap-2 align-items-start h-100">
-                                <input class="form-check-input mt-1" type="checkbox" name="processos[]" value="<?= $processo['id'] ?>" <?= in_array((string)$processo['id'], $produtoProcessos, true) ? 'checked' : '' ?>>
-                                <span>
-                                    <strong><?= htmlspecialchars($processo['nome']) ?></strong>
-                                    <span class="badge badge-info ms-1"><?= htmlspecialchars($processo['setor'] ?? 'Produção') ?></span>
-                                    <?php if (!empty($processo['maquina'])): ?>
-                                        <span class="d-block small text-muted"><?= htmlspecialchars($processo['maquina']) ?></span>
-                                    <?php endif; ?>
-                                </span>
-                            </label>
-                        </div>
+                            <div class="col-md-6">
+                                <label class="border-kroma rounded-kroma p-2 d-flex gap-2 align-items-start h-100">
+                                    <input class="form-check-input mt-1" type="checkbox" name="processos[]" value="<?= $processo['id'] ?>" <?= in_array((string)$processo['id'], $produtoProcessos, true) ? 'checked' : '' ?>>
+                                    <span>
+                                        <strong><?= htmlspecialchars($processo['nome']) ?></strong>
+                                        <span class="badge badge-info ms-1"><?= htmlspecialchars($processo['setor'] ?? 'Produção') ?></span>
+                                        <?php if (!empty($processo['maquina'])): ?>
+                                            <span class="d-block small text-muted"><?= htmlspecialchars($processo['maquina']) ?></span>
+                                        <?php endif; ?>
+                                    </span>
+                                </label>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -146,42 +158,42 @@ function produtoDecimalInput($value): string {
                 <div class="p-3">
                     <div id="variacoesWrapper" class="d-flex flex-column gap-3">
                         <?php foreach ($variacoes as $index => $variacao): ?>
-                        <div class="border-kroma rounded-kroma p-3" data-variacao>
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <span class="badge badge-primary">Variação <span data-variacao-number><?= $index + 1 ?></span></span>
-                                <button type="button" class="btn btn-secondary btn-sm" data-remove-variacao><i class="bi bi-trash"></i> Remover</button>
+                            <div class="border-kroma rounded-kroma p-3" data-variacao>
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <span class="badge badge-primary">Variação <span data-variacao-number><?= $index + 1 ?></span></span>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-remove-variacao><i class="bi bi-trash"></i> Remover</button>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Nome</label>
+                                        <input class="form-control" name="variacao_nome[]" value="<?= htmlspecialchars($variacao['nome'] ?? '') ?>" placeholder="Ex: 1,00 x 1,00m">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">SKU</label>
+                                        <input class="form-control" name="variacao_sku[]" value="<?= htmlspecialchars($variacao['sku'] ?? '') ?>">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Unidade</label>
+                                        <input class="form-control" name="variacao_unidade[]" value="<?= htmlspecialchars($variacao['unidade'] ?? '') ?>" placeholder="un">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Largura</label>
+                                        <input class="form-control" name="variacao_largura[]" value="<?= produtoDecimalInput($variacao['largura'] ?? 0) ?>">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Altura</label>
+                                        <input class="form-control" name="variacao_altura[]" value="<?= produtoDecimalInput($variacao['altura'] ?? 0) ?>">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Custo extra</label>
+                                        <input class="form-control money" name="variacao_custo_extra[]" value="<?= produtoMoneyInput($variacao['custo_extra'] ?? 0) ?>">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">Preço extra</label>
+                                        <input class="form-control money" name="variacao_preco_extra[]" value="<?= produtoMoneyInput($variacao['preco_extra'] ?? 0) ?>">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="row g-2">
-                                <div class="col-md-4">
-                                    <label class="form-label">Nome</label>
-                                    <input class="form-control" name="variacao_nome[]" value="<?= htmlspecialchars($variacao['nome'] ?? '') ?>" placeholder="Ex: 1,00 x 1,00m">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">SKU</label>
-                                    <input class="form-control" name="variacao_sku[]" value="<?= htmlspecialchars($variacao['sku'] ?? '') ?>">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Unidade</label>
-                                    <input class="form-control" name="variacao_unidade[]" value="<?= htmlspecialchars($variacao['unidade'] ?? '') ?>" placeholder="un">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Largura</label>
-                                    <input class="form-control" name="variacao_largura[]" value="<?= produtoDecimalInput($variacao['largura'] ?? 0) ?>">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Altura</label>
-                                    <input class="form-control" name="variacao_altura[]" value="<?= produtoDecimalInput($variacao['altura'] ?? 0) ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Custo extra</label>
-                                    <input class="form-control money" name="variacao_custo_extra[]" value="<?= produtoMoneyInput($variacao['custo_extra'] ?? 0) ?>">
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Preço extra</label>
-                                    <input class="form-control money" name="variacao_preco_extra[]" value="<?= produtoMoneyInput($variacao['preco_extra'] ?? 0) ?>">
-                                </div>
-                            </div>
-                        </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -206,10 +218,10 @@ function produtoDecimalInput($value): string {
                         ];
                         foreach ($custos as $name => $label):
                         ?>
-                        <div class="col-6">
-                            <label class="form-label"><?= $label ?></label>
-                            <input class="form-control money calc-produto" name="<?= $name ?>" value="<?= produtoMoneyInput($produto[$name] ?? 0) ?>">
-                        </div>
+                            <div class="col-6">
+                                <label class="form-label"><?= $label ?></label>
+                                <input class="form-control money calc-produto" name="<?= $name ?>" value="<?= produtoMoneyInput($produto[$name] ?? 0) ?>">
+                            </div>
                         <?php endforeach; ?>
                         <div class="col-6"><label class="form-label">Desperdício %</label><input class="form-control calc-produto" name="desperdicio_percent" value="<?= htmlspecialchars($produto['desperdicio_percent'] ?? 5) ?>"></div>
                         <div class="col-6"><label class="form-label">Margem %</label><input class="form-control calc-produto" name="margem_percent" value="<?= htmlspecialchars($produto['margem_percent'] ?? 35) ?>"></div>
@@ -234,19 +246,19 @@ function produtoDecimalInput($value): string {
                 </div>
                 <div class="p-3 d-flex flex-column gap-2">
                     <?php foreach ($contexto['acabamentos'] as $acabamento): ?>
-                    <div class="border-kroma rounded-kroma p-2">
-                        <label class="d-flex gap-2 align-items-start mb-2">
-                            <input class="form-check-input mt-1" type="checkbox" name="acabamentos[]" value="<?= $acabamento['id'] ?>" <?= in_array((string)$acabamento['id'], $produtoAcabamentos, true) ? 'checked' : '' ?>>
-                            <span>
-                                <strong><?= htmlspecialchars($acabamento['nome']) ?></strong>
-                                <span class="badge badge-secondary ms-1">R$ <?= number_format((float)$acabamento['custo_base'], 2, ',', '.') ?></span>
-                            </span>
-                        </label>
-                        <label class="d-inline-flex align-items-center gap-2 mb-0">
-                            <input class="form-check-input mt-0" type="checkbox" name="acabamentos_obrigatorios[]" value="<?= $acabamento['id'] ?>" <?= in_array((string)$acabamento['id'], $produtoAcabamentosObrigatorios, true) ? 'checked' : '' ?>>
-                            <span class="badge badge-warning">Obrigatório</span>
-                        </label>
-                    </div>
+                        <div class="border-kroma rounded-kroma p-2">
+                            <label class="d-flex gap-2 align-items-start mb-2">
+                                <input class="form-check-input mt-1" type="checkbox" name="acabamentos[]" value="<?= $acabamento['id'] ?>" <?= in_array((string)$acabamento['id'], $produtoAcabamentos, true) ? 'checked' : '' ?>>
+                                <span>
+                                    <strong><?= htmlspecialchars($acabamento['nome']) ?></strong>
+                                    <span class="badge badge-secondary ms-1">R$ <?= number_format((float)$acabamento['custo_base'], 2, ',', '.') ?></span>
+                                </span>
+                            </label>
+                            <label class="d-inline-flex align-items-center gap-2 mb-0">
+                                <input class="form-check-input mt-0" type="checkbox" name="acabamentos_obrigatorios[]" value="<?= $acabamento['id'] ?>" <?= in_array((string)$acabamento['id'], $produtoAcabamentosObrigatorios, true) ? 'checked' : '' ?>>
+                                <span class="badge badge-warning">Obrigatório</span>
+                            </label>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
@@ -259,7 +271,7 @@ function produtoDecimalInput($value): string {
                     <button class="btn btn-primary" type="submit"><i class="bi bi-check2-circle"></i> <?= $isEdicao ? 'Atualizar Produto' : 'Cadastrar Produto' ?></button>
                     <a class="btn btn-secondary" href="<?= APP_URL ?>/produtos"><i class="bi bi-arrow-left"></i> Voltar</a>
                     <?php if ($isEdicao): ?>
-                    <a class="btn btn-secondary" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>"><i class="bi bi-eye"></i> Ver Ficha</a>
+                        <a class="btn btn-secondary" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>"><i class="bi bi-eye"></i> Ver Ficha</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -286,56 +298,59 @@ function produtoDecimalInput($value): string {
 </template>
 
 <script>
-(function() {
-    const parseBR = value => {
-        value = String(value || '0').replace(/[^\d,.-]/g, '');
-        if (value.includes(',')) {
-            value = value.replace(/\./g, '').replace(',', '.');
-        }
-        return parseFloat(value) || 0;
-    };
-    const money = value => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-    const calc = () => {
-        const form = document.getElementById('formProduto');
-        if (!form) return;
-        const costKeys = ['custo_material','custo_tinta','custo_acabamento','custo_mao_obra','custo_maquina','custo_terceiros'];
-        const custo = costKeys.reduce((total, key) => total + parseBR(form.elements[key]?.value), 0);
-        const desperdicio = parseBR(form.elements['desperdicio_percent']?.value);
-        const margem = parseBR(form.elements['margem_percent']?.value);
-        const impostos = parseBR(form.elements['impostos_percent']?.value);
-        const comissao = parseBR(form.elements['comissao_percent']?.value);
-        const custoComDesperdicio = custo * (1 + desperdicio / 100);
-        const minimo = custoComDesperdicio * (1 + (impostos + comissao) / 100);
-        const base = custoComDesperdicio * (1 + (margem + impostos + comissao) / 100);
-        document.getElementById('previewCustoProduto').textContent = money(custoComDesperdicio);
-        document.getElementById('previewMinimoProduto').textContent = money(minimo);
-        document.getElementById('previewBaseProduto').textContent = money(base);
-    };
-
-    const renumerar = () => {
-        document.querySelectorAll('[data-variacao]').forEach((item, index) => {
-            const number = item.querySelector('[data-variacao-number]');
-            if (number) number.textContent = index + 1;
+    (function() {
+        const parseBR = value => {
+            value = String(value || '0').replace(/[^\d,.-]/g, '');
+            if (value.includes(',')) {
+                value = value.replace(/\./g, '').replace(',', '.');
+            }
+            return parseFloat(value) || 0;
+        };
+        const money = value => value.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
         });
-    };
 
-    document.querySelectorAll('.calc-produto').forEach(input => input.addEventListener('input', calc));
-    document.getElementById('addVariacao')?.addEventListener('click', () => {
-        const tpl = document.getElementById('variacaoTemplate');
-        const wrapper = document.getElementById('variacoesWrapper');
-        wrapper.appendChild(tpl.content.cloneNode(true));
+        const calc = () => {
+            const form = document.getElementById('formProduto');
+            if (!form) return;
+            const costKeys = ['custo_material', 'custo_tinta', 'custo_acabamento', 'custo_mao_obra', 'custo_maquina', 'custo_terceiros'];
+            const custo = costKeys.reduce((total, key) => total + parseBR(form.elements[key]?.value), 0);
+            const desperdicio = parseBR(form.elements['desperdicio_percent']?.value);
+            const margem = parseBR(form.elements['margem_percent']?.value);
+            const impostos = parseBR(form.elements['impostos_percent']?.value);
+            const comissao = parseBR(form.elements['comissao_percent']?.value);
+            const custoComDesperdicio = custo * (1 + desperdicio / 100);
+            const minimo = custoComDesperdicio * (1 + (impostos + comissao) / 100);
+            const base = custoComDesperdicio * (1 + (margem + impostos + comissao) / 100);
+            document.getElementById('previewCustoProduto').textContent = money(custoComDesperdicio);
+            document.getElementById('previewMinimoProduto').textContent = money(minimo);
+            document.getElementById('previewBaseProduto').textContent = money(base);
+        };
+
+        const renumerar = () => {
+            document.querySelectorAll('[data-variacao]').forEach((item, index) => {
+                const number = item.querySelector('[data-variacao-number]');
+                if (number) number.textContent = index + 1;
+            });
+        };
+
+        document.querySelectorAll('.calc-produto').forEach(input => input.addEventListener('input', calc));
+        document.getElementById('addVariacao')?.addEventListener('click', () => {
+            const tpl = document.getElementById('variacaoTemplate');
+            const wrapper = document.getElementById('variacoesWrapper');
+            wrapper.appendChild(tpl.content.cloneNode(true));
+            renumerar();
+        });
+        document.addEventListener('click', event => {
+            const btn = event.target.closest('[data-remove-variacao]');
+            if (!btn) return;
+            const items = document.querySelectorAll('[data-variacao]');
+            if (items.length <= 1) return;
+            btn.closest('[data-variacao]').remove();
+            renumerar();
+        });
+        calc();
         renumerar();
-    });
-    document.addEventListener('click', event => {
-        const btn = event.target.closest('[data-remove-variacao]');
-        if (!btn) return;
-        const items = document.querySelectorAll('[data-variacao]');
-        if (items.length <= 1) return;
-        btn.closest('[data-variacao]').remove();
-        renumerar();
-    });
-    calc();
-    renumerar();
-})();
+    })();
 </script>
