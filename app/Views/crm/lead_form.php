@@ -10,7 +10,7 @@ $action     = $isEdicao ? (APP_URL . '/crm/leads/' . $lead['id'] . '/editar') : 
 $titulo     = $isEdicao ? 'Editar Lead' : 'Novo Lead';
 
 // Pré-seleciona estágio pelo GET
-$estagioInicial = $_GET['estagio'] ?? ($lead['estagio'] ?? 'novo_lead');
+$estagioInicial = $_GET['estagio'] ?? ($lead['estagio'] ?? 'nova_solicitacao');
 ?>
 
 <form action="<?= $action ?>" method="POST" data-loading>
@@ -96,29 +96,25 @@ $estagioInicial = $_GET['estagio'] ?? ($lead['estagio'] ?? 'novo_lead');
             <div style="padding:16px">
                 <div class="mb-3">
                     <label class="form-label" for="estagio">Estágio</label>
-                    <select class="form-select" id="estagio" name="estagio">
-                        <?php
-                        $estagios = [
-                            'novo_lead'         => 'Novo Lead',
-                            'primeiro_contato'  => 'Primeiro Contato',
-                            'orcamento_rapido'  => 'Orçamento Rápido',
-                            'orcamento_ia'      => 'Orçamento IA',
-                            'orcamento_enviado' => 'Orçamento Enviado',
-                            'negociacao'        => 'Negociação',
-                            'aprovado'          => 'Aprovado',
-                            'em_producao'       => 'Em Produção',
-                            'entregue'          => 'Entregue',
-                            'pos_venda'         => 'Pós-venda',
-                            'recorrencia'       => 'Recorrência',
-                            'perdido'           => 'Perdido',
-                        ];
-                        foreach ($estagios as $val => $label):
-                        ?>
-                        <option value="<?= $val ?>" <?= $estagioInicial === $val ? 'selected' : '' ?>>
-                            <?= $label ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
+                <select class="form-select" id="estagio" name="estagio">
+                    <?php
+                    $estagios = [
+                        'nova_solicitacao'  => 'Nova Solicitação',
+                        'orcamento'         => 'Orçamento',
+                        'orcamento_enviado' => 'Orçamento Enviado',
+                        'aprovado'          => 'Aprovado',
+                        'em_producao'       => 'Em Produção',
+                        'entregue'          => 'Entregue',
+                        'pos_venda'         => 'Pós-venda',
+                        'perdido'           => 'Perdido',
+                    ];
+                    foreach ($estagios as $val => $label):
+                    ?>
+                    <option value="<?= $val ?>" <?= $estagioInicial === $val ? 'selected' : '' ?>>
+                        <?= $label ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="temperatura">Temperatura</label>

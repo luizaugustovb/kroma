@@ -36,11 +36,15 @@ $prioridadeIcons = [
             <option value="quente">Quente</option>
         </select>
         <div class="ms-auto d-flex gap-2">
+            <div class="form-check form-switch d-flex align-items-center gap-1" style="font-size:13px;">
+                <input class="form-check-input" type="checkbox" id="chkConcluidos" <?= $exibirConcluidos ? 'checked' : '' ?>>
+                <label class="form-check-label" for="chkConcluidos">Concluídos</label>
+            </div>
             <a href="<?= APP_URL ?>/crm/leads" class="btn btn-secondary btn-sm">
                 <i class="bi bi-list"></i> Lista
             </a>
             <a href="<?= APP_URL ?>/crm/leads/novo" class="btn btn-primary btn-sm">
-                <i class="bi bi-plus-circle"></i> Novo Lead
+                <i class="bi bi-plus-circle"></i> Nova Solicitação
             </a>
         </div>
     </div>
@@ -149,6 +153,9 @@ $prioridadeIcons = [
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-success btn-sm" id="btnConcluirLead" style="display:none">
+                    <i class="bi bi-check-circle"></i> Concluir Atendimento
+                </button>
                 <a href="#" id="btnEditarLead" class="btn btn-primary btn-sm">
                     <i class="bi bi-pencil"></i> Editar
                 </a>
@@ -159,6 +166,8 @@ $prioridadeIcons = [
 </div>
 
 <script>
+var leadAtualId = null;
+
 // Inicializa Kanban drag-and-drop
 document.addEventListener('DOMContentLoaded', function() {
     KROMA.kanban.init();
@@ -170,13 +179,114 @@ document.addEventListener('DOMContentLoaded', function() {
         const badge = document.getElementById('count-' + slug);
         if (badge) badge.textContent = count;
     });
+
+    // Toggle exibir concluídos
+    document.getElementById('chkConcluidos')?.addEventListener('change', function() {
+        const url = new URL(window.location);
+        if (this.checked) {
+            url.searchParams.set('concluidos', '1');
+        } else {
+            url.searchParams.delete('concluidos');
+        }
+        window.location.href = url.toString();
+    });
+
+    // Botão concluir lead
+    document.getElementById('btnConcluirLead')?.addEventListener('click', function() {
+        if (!leadAtualId) return;
+        if (!confirm('Confirmar conclusão do atendimento? O lead será arquivado.')) return;
+
+        fetch(KROMA.baseUrl + '/crm/leads/' + leadAtualId + '/concluir', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const card = document.querySelector('.kanban-card[data-id="' + leadAtualId + '"]');
+                if (card) {
+                    const col = card.closest('.kanban-column');
+                    card.remove();
+                    if (col) KROMA.kanban.atualizarContador(col);
+                }
+                bootstrap.Modal.getInstance(document.getElementById('modalLead'))?.hide();
+                KROMA.flash.show('Atendimento concluído com sucesso!', 'success');
+            } else {
+                KROMA.flash.show('Erro: ' + (data.message || 'Falha ao concluir'), 'error');
+            }
+        })
+        .catch(() => KROMA.flash.show('Erro de conexão', 'error'));
+    });
 });
+
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function renderArquivosLead(arquivos) {
+    if (!Array.isArray(arquivos) || arquivos.length === 0) {
+        return '';
+    }
+
+    return `
+        <div class="col-12">
+            <small class="form-label">Arquivos enviados</small>
+            <div class="row g-2 mt-1">
+                ${arquivos.map(arquivo => {
+                    const nome = escapeHtml(arquivo.nome || 'Arquivo enviado');
+                    const url = escapeHtml(arquivo.url || '#');
+
+                    if (arquivo.imagem) {
+                        return `
+                            <div class="col-md-6">
+                                <a href="${url}" target="_blank" rel="noopener" class="d-block text-decoration-none border-kroma rounded-kroma overflow-hidden bg-white">
+                                    <div class="ratio ratio-16x9 bg-light">
+                                        <img src="${url}" alt="${nome}" style="width:100%;height:100%;object-fit:cover;">
+                                    </div>
+                                    <div class="p-2 d-flex align-items-center justify-content-between gap-2">
+                                        <span class="small text-truncate" style="color:var(--text-primary)"><i class="bi bi-image me-1"></i>${nome}</span>
+                                        <span class="badge badge-info">Ver foto</span>
+                                    </div>
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="col-md-6">
+                            <div class="border-kroma rounded-kroma p-2 d-flex align-items-center justify-content-between gap-2 bg-white">
+                                <div class="text-truncate">
+                                    <div class="fw-bold text-truncate" style="font-size:13px;color:var(--text-primary)"><i class="bi bi-paperclip me-1"></i>${nome}</div>
+                                    <div class="small text-muted">${escapeHtml((arquivo.extensao || 'arquivo').toUpperCase())}</div>
+                                </div>
+                                <a href="${url}" target="_blank" rel="noopener" download class="btn btn-secondary btn-sm flex-shrink-0">
+                                    <i class="bi bi-download"></i> Baixar
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+}
 
 // Abre modal com detalhes do lead
 function abrirLead(id) {
+    leadAtualId = id;
     const modal = new bootstrap.Modal(document.getElementById('modalLead'));
     document.getElementById('modalLeadBody').innerHTML = '<div class="text-center py-4"><span class="spinner"></span></div>';
     document.getElementById('btnEditarLead').href = KROMA.baseUrl + '/crm/leads/' + id + '/editar';
+    document.getElementById('btnConcluirLead').style.display = 'none';
     modal.show();
 
     KROMA.ajax.get('/crm/leads/' + id + '/json')
@@ -184,19 +294,20 @@ function abrirLead(id) {
             if (data.lead) {
                 const lead = data.lead;
                 document.getElementById('modalLeadTitle').textContent = lead.nome;
+                const observacoes = lead.observacoes_limpa || '';
                 document.getElementById('modalLeadBody').innerHTML = `
                     <div class="row g-3">
                         <div class="col-md-6">
                             <small class="form-label">Empresa</small>
-                            <div style="color:var(--text-primary)">${lead.empresa || '—'}</div>
+                            <div style="color:var(--text-primary)">${escapeHtml(lead.empresa || '—')}</div>
                         </div>
                         <div class="col-md-6">
                             <small class="form-label">WhatsApp</small>
-                            <div style="color:var(--text-primary)">${lead.whatsapp || lead.telefone || '—'}</div>
+                            <div style="color:var(--text-primary)">${escapeHtml(lead.whatsapp || lead.telefone || '—')}</div>
                         </div>
                         <div class="col-md-6">
                             <small class="form-label">Produto de Interesse</small>
-                            <div style="color:var(--text-primary)">${lead.produto_interesse || '—'}</div>
+                            <div style="color:var(--text-primary)">${escapeHtml(lead.produto_interesse || '—')}</div>
                         </div>
                         <div class="col-md-6">
                             <small class="form-label">Valor Estimado</small>
@@ -204,10 +315,15 @@ function abrirLead(id) {
                         </div>
                         <div class="col-12">
                             <small class="form-label">Observações</small>
-                            <div style="color:var(--text-primary)">${lead.observacoes || '—'}</div>
+                            <div style="color:var(--text-primary);white-space:pre-line">${escapeHtml(observacoes || '—')}</div>
                         </div>
+                        ${renderArquivosLead(lead.arquivos)}
                     </div>
                 `;
+                // Mostra botão concluir apenas para leads em pos_venda não concluídos
+                if (lead.estagio === 'pos_venda' && !lead.concluido_at) {
+                    document.getElementById('btnConcluirLead').style.display = '';
+                }
             }
         })
         .catch(() => {

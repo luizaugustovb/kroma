@@ -47,6 +47,8 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Font Awesome 6 (free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- DataTables -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <!-- KROMA CSS -->
@@ -76,253 +78,302 @@ $iniciais = implode('', array_map(fn($p) => strtoupper($p[0]), array_slice(explo
                 </div>
             </div>
 
-            <!-- Navegação -->
+            <!-- Navegação (Accordion) -->
             <nav class="sidebar-nav" id="sidebarNav">
 
                 <!-- Principal -->
                 <?php if (Auth::pode('bi') || Auth::pode('dashboard')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Principal</div>
+                <div class="menu-group" data-group="principal">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-gauge-high menu-icon"></i>
+                        <span>Principal</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('bi')): ?>
-                            <a href="<?= APP_URL ?>/bi" class="nav-item" data-tooltip="BI Executivo">
-                                <i class="bi bi-bar-chart-line"></i>
-                                <span class="nav-label">BI Executivo</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/bi" class="nav-item" data-tooltip="BI Executivo">
+                            <i class="bi bi-bar-chart-line"></i>
+                            <span class="nav-label">BI Executivo</span>
+                        </a>
                         <?php endif; ?>
                         <?php if (Auth::pode('dashboard')): ?>
-                            <a href="<?= APP_URL ?>/dashboard" class="nav-item" data-tooltip="Dashboard Leads">
-                                <i class="bi bi-speedometer2"></i>
-                                <span class="nav-label">Dashboard</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/dashboard" class="nav-item" data-tooltip="Dashboard Leads">
+                            <i class="bi bi-speedometer2"></i>
+                            <span class="nav-label">Dashboard</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Cliente -->
                 <?php if (Auth::temPerfil('cliente')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Cliente</div>
+                <div class="menu-group" data-group="cliente">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-user menu-icon"></i>
+                        <span>Cliente</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <a href="<?= APP_URL ?>/portal" class="nav-item" data-tooltip="Portal do Cliente">
                             <i class="bi bi-person-workspace"></i>
                             <span class="nav-label">Portal do Cliente</span>
                         </a>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Comercial -->
                 <?php if (Auth::pode('crm') || Auth::pode('clientes') || Auth::pode('orcamentos')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Comercial</div>
-
+                <div class="menu-group" data-group="comercial">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-briefcase menu-icon"></i>
+                        <span>Comercial</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('crm')): ?>
-                            <a href="<?= APP_URL ?>/crm" class="nav-item" data-tooltip="CRM">
-                                <i class="bi bi-kanban"></i>
-                                <span class="nav-label">CRM / Kanban</span>
-                                <?php if ($notifCount > 0): ?>
-                                    <span class="nav-badge"><?= $notifCount ?></span>
-                                <?php endif; ?>
-                            </a>
+                        <a href="<?= APP_URL ?>/crm" class="nav-item" data-tooltip="CRM">
+                            <i class="bi bi-kanban"></i>
+                            <span class="nav-label">CRM / Kanban</span>
+                            <?php if ($notifCount > 0): ?>
+                            <span class="nav-badge"><?= $notifCount ?></span>
+                            <?php endif; ?>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('clientes')): ?>
-                            <a href="<?= APP_URL ?>/clientes" class="nav-item" data-tooltip="Clientes">
-                                <i class="bi bi-people"></i>
-                                <span class="nav-label">Clientes</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/clientes" class="nav-item" data-tooltip="Clientes">
+                            <i class="bi bi-people"></i>
+                            <span class="nav-label">Clientes</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('orcamentos')): ?>
-                            <a href="<?= APP_URL ?>/orcamentos" class="nav-item" data-tooltip="Orçamentos">
-                                <i class="bi bi-file-earmark-text"></i>
-                                <span class="nav-label">Orçamentos</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/orcamentos" class="nav-item" data-tooltip="Orçamentos">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span class="nav-label">Orçamentos</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Operacional -->
                 <?php if (Auth::pode('produtos') || Auth::pode('producao') || Auth::temPerfil('designer') || Auth::pode('agenda') || Auth::pode('led') || Auth::pode('estoque') || Auth::pode('compras')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Operacional</div>
-
+                <div class="menu-group" data-group="operacional">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-industry menu-icon"></i>
+                        <span>Operacional</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('produtos')): ?>
-                            <a href="<?= APP_URL ?>/produtos" class="nav-item" data-tooltip="Produtos">
-                                <i class="bi bi-box"></i>
-                                <span class="nav-label">Produtos</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/produtos" class="nav-item" data-tooltip="Produtos">
+                            <i class="bi bi-box"></i>
+                            <span class="nav-label">Produtos</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('producao') || Auth::temPerfil('designer')): ?>
-                            <a href="<?= APP_URL ?>/producao" class="nav-item" data-tooltip="Produção">
-                                <i class="bi bi-gear"></i>
-                                <span class="nav-label">OS / Produção</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/producao" class="nav-item" data-tooltip="Produção">
+                            <i class="bi bi-gear"></i>
+                            <span class="nav-label">OS / Produção</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('agenda')): ?>
-                            <a href="<?= APP_URL ?>/agenda" class="nav-item" data-tooltip="Agenda de Instalações">
-                                <i class="bi bi-calendar-check"></i>
-                                <span class="nav-label">Agenda de Instalações</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/agenda" class="nav-item" data-tooltip="Agenda de Instalações">
+                            <i class="bi bi-calendar-check"></i>
+                            <span class="nav-label">Agenda de Instalações</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('led')): ?>
-                            <a href="<?= APP_URL ?>/led" class="nav-item" data-tooltip="Painéis de LED">
-                                <i class="bi bi-display"></i>
-                                <span class="nav-label">Painéis de LED</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/led" class="nav-item" data-tooltip="Painéis de LED">
+                            <i class="bi bi-display"></i>
+                            <span class="nav-label">Painéis de LED</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('estoque')): ?>
-                            <a href="<?= APP_URL ?>/estoque" class="nav-item" data-tooltip="Estoque">
-                                <i class="bi bi-archive"></i>
-                                <span class="nav-label">Estoque</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/estoque" class="nav-item" data-tooltip="Estoque">
+                            <i class="bi bi-archive"></i>
+                            <span class="nav-label">Estoque</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('compras')): ?>
-                            <a href="<?= APP_URL ?>/compras" class="nav-item" data-tooltip="Compras">
-                                <i class="bi bi-cart"></i>
-                                <span class="nav-label">Compras</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/compras" class="nav-item" data-tooltip="Compras">
+                            <i class="bi bi-cart"></i>
+                            <span class="nav-label">Compras</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- RH -->
                 <?php if (Auth::pode('colaboradores') || Auth::pode('equipamentos')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">RH</div>
+                <div class="menu-group" data-group="rh">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-users menu-icon"></i>
+                        <span>RH</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <a href="<?= APP_URL ?>/rh" class="nav-item" data-tooltip="RH Operacional">
                             <i class="bi bi-person-badge"></i>
                             <span class="nav-label">RH Operacional</span>
                         </a>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Qualidade -->
                 <?php if (Auth::pode('pops')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Qualidade</div>
+                <div class="menu-group" data-group="qualidade">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-clipboard-check menu-icon"></i>
+                        <span>Qualidade</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <a href="<?= APP_URL ?>/qualidade" class="nav-item" data-tooltip="Qualidade / POPs">
                             <i class="bi bi-clipboard-check"></i>
                             <span class="nav-label">Qualidade / POPs</span>
                         </a>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Comunicação -->
                 <?php if (Auth::pode('chamados') || Auth::pode('whatsapp') || Auth::pode('chat')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Comunicação</div>
+                <div class="menu-group" data-group="comunicacao">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-comments menu-icon"></i>
+                        <span>Comunicação</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('chamados')): ?>
-                            <a href="<?= APP_URL ?>/chamados" class="nav-item" data-tooltip="Chamados Internos">
-                                <i class="bi bi-ticket-detailed"></i>
-                                <span class="nav-label">Chamados Internos</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/chamados" class="nav-item" data-tooltip="Chamados Internos">
+                            <i class="bi bi-ticket-detailed"></i>
+                            <span class="nav-label">Chamados Internos</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('chat')): ?>
-                            <a href="<?= APP_URL ?>/chat" class="nav-item" data-tooltip="Chat Interno">
-                                <i class="bi bi-chat-dots"></i>
-                                <span class="nav-label">Chat Interno</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/chat" class="nav-item" data-tooltip="Chat Interno">
+                            <i class="bi bi-chat-dots"></i>
+                            <span class="nav-label">Chat Interno</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('whatsapp')): ?>
-                            <a href="<?= APP_URL ?>/whatsapp" class="nav-item" data-tooltip="WhatsApp">
-                                <i class="bi bi-whatsapp"></i>
-                                <span class="nav-label">WhatsApp</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/whatsapp" class="nav-item" data-tooltip="WhatsApp">
+                            <i class="bi bi-whatsapp"></i>
+                            <span class="nav-label">WhatsApp</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Financeiro -->
                 <?php if (Auth::pode('financeiro') || Auth::pode('comissoes')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Financeiro</div>
-
+                <div class="menu-group" data-group="financeiro">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-wallet menu-icon"></i>
+                        <span>Financeiro</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('financeiro')): ?>
-                            <a href="<?= APP_URL ?>/financeiro" class="nav-item" data-tooltip="Financeiro">
-                                <i class="bi bi-cash-stack"></i>
-                                <span class="nav-label">Financeiro</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/financeiro" class="nav-item" data-tooltip="Financeiro">
+                            <i class="bi bi-cash-stack"></i>
+                            <span class="nav-label">Financeiro</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/financeiro/dre" class="nav-item" data-tooltip="DRE Gerencial">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            <span class="nav-label">DRE Gerencial</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('comissoes')): ?>
-                            <a href="<?= APP_URL ?>/comissoes" class="nav-item" data-tooltip="Comissões">
-                                <i class="bi bi-percent"></i>
-                                <span class="nav-label">Comissões</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/comissoes" class="nav-item" data-tooltip="Comissões">
+                            <i class="bi bi-percent"></i>
+                            <span class="nav-label">Comissões</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Inteligência -->
                 <?php if (Auth::pode('alertas') || Auth::pode('ia') || Auth::pode('planejamento') || Auth::pode('relatorios') || Auth::pode('integracoes')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Inteligência</div>
+                <div class="menu-group" data-group="inteligencia">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-brain menu-icon"></i>
+                        <span>Inteligência</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('alertas')): ?>
-                            <a href="<?= APP_URL ?>/alertas" class="nav-item" data-tooltip="Central de Alertas">
-                                <i class="bi bi-bell"></i>
-                                <span class="nav-label">Central de Alertas</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/alertas" class="nav-item" data-tooltip="Central de Alertas">
+                            <i class="bi bi-bell"></i>
+                            <span class="nav-label">Central de Alertas</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('ia')): ?>
-                            <a href="<?= APP_URL ?>/ia" class="nav-item" data-tooltip="Central de IA">
-                                <i class="bi bi-stars"></i>
-                                <span class="nav-label">Central de IA</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/ia" class="nav-item" data-tooltip="Central de IA">
+                            <i class="bi bi-stars"></i>
+                            <span class="nav-label">Central de IA</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('integracoes')): ?>
-                            <a href="<?= APP_URL ?>/integracoes" class="nav-item" data-tooltip="Integrações">
-                                <i class="bi bi-plug"></i>
-                                <span class="nav-label">Integrações</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/integracoes" class="nav-item" data-tooltip="Integrações">
+                            <i class="bi bi-plug"></i>
+                            <span class="nav-label">Integrações</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('relatorios')): ?>
-                            <a href="<?= APP_URL ?>/relatorios" class="nav-item" data-tooltip="Relatórios">
-                                <i class="bi bi-file-earmark-bar-graph"></i>
-                                <span class="nav-label">Relatórios</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/relatorios" class="nav-item" data-tooltip="Relatórios">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            <span class="nav-label">Relatórios</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('planejamento')): ?>
-                            <a href="<?= APP_URL ?>/planejamento" class="nav-item" data-tooltip="Planejamento">
-                                <i class="bi bi-bullseye"></i>
-                                <span class="nav-label">Planejamento</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/planejamento" class="nav-item" data-tooltip="Planejamento">
+                            <i class="bi bi-bullseye"></i>
+                            <span class="nav-label">Planejamento</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Administrativo -->
                 <?php if (Auth::pode('usuarios') || Auth::pode('empresa')): ?>
-                    <div class="nav-group">
-                        <div class="nav-group-label">Administrativo</div>
-
+                <div class="menu-group" data-group="administrativo">
+                    <button class="menu-toggle" aria-expanded="false">
+                        <i class="fa-solid fa-gear menu-icon"></i>
+                        <span>Administrativo</span>
+                        <i class="fa-solid fa-chevron-right arrow"></i>
+                    </button>
+                    <div class="submenu">
                         <?php if (Auth::pode('usuarios')): ?>
-                            <a href="<?= APP_URL ?>/usuarios" class="nav-item" data-tooltip="Usuários">
-                                <i class="bi bi-person-gear"></i>
-                                <span class="nav-label">Usuários</span>
-                            </a>
-                            <a href="<?= APP_URL ?>/perfis" class="nav-item" data-tooltip="Perfis">
-                                <i class="bi bi-shield-check"></i>
-                                <span class="nav-label">Perfis</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/usuarios" class="nav-item" data-tooltip="Usuários">
+                            <i class="bi bi-person-gear"></i>
+                            <span class="nav-label">Usuários</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/perfis" class="nav-item" data-tooltip="Perfis">
+                            <i class="bi bi-shield-check"></i>
+                            <span class="nav-label">Perfis</span>
+                        </a>
                         <?php endif; ?>
-
                         <?php if (Auth::pode('empresa')): ?>
-                            <a href="<?= APP_URL ?>/empresa" class="nav-item" data-tooltip="Empresa">
-                                <i class="bi bi-building"></i>
-                                <span class="nav-label">Empresa</span>
-                            </a>
+                        <a href="<?= APP_URL ?>/empresa" class="nav-item" data-tooltip="Empresa">
+                            <i class="bi bi-building"></i>
+                            <span class="nav-label">Empresa</span>
+                        </a>
+                        <a href="<?= APP_URL ?>/site" class="nav-item" data-tooltip="Site Público">
+                            <i class="bi bi-window-sidebar"></i>
+                            <span class="nav-label">Site Público</span>
+                        </a>
                         <?php endif; ?>
                     </div>
+                </div>
                 <?php endif; ?>
 
             </nav>

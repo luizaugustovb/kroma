@@ -1,16 +1,12 @@
 <?php
 $estagioLabels = [
-    'novo_lead' => 'Novo Lead',
-    'primeiro_contato' => 'Primeiro Contato',
-    'orcamento_rapido' => 'Orçamento Rápido',
-    'orcamento_ia' => 'Orçamento IA',
+    'nova_solicitacao' => 'Nova Solicitação',
+    'orcamento' => 'Orçamento',
     'orcamento_enviado' => 'Orçamento Enviado',
-    'negociacao' => 'Negociação',
     'aprovado' => 'Aprovado',
     'em_producao' => 'Em Produção',
     'entregue' => 'Entregue',
     'pos_venda' => 'Pós-venda',
-    'recorrencia' => 'Recorrência',
     'perdido' => 'Perdido',
 ];
 ?>

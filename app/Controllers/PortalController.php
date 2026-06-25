@@ -75,6 +75,121 @@ class PortalController
         require APP_PATH . '/Views/layouts/main.php';
     }
 
+    public function verOrcamento(string $id): void
+    {
+        $cliente = $this->clienteDoUsuario();
+        if (!$cliente) {
+            $_SESSION['flash_error'] = 'Cliente não vinculado.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $orcamento = $this->buscarOrcamentoDoCliente($id, (int)$cliente['id']);
+        if (!$orcamento) {
+            $_SESSION['flash_error'] = 'Orçamento não encontrado.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $itens = $this->query(
+            "SELECT oi.*, p.codigo AS produto_codigo, p.nome AS produto_nome
+             FROM orcamento_itens oi
+             LEFT JOIN produtos p ON p.id = oi.produto_id
+             WHERE oi.orcamento_id = ?
+             ORDER BY oi.id",
+            [$id]
+        );
+
+        $statusOrcamento = $this->orcamentoStatusLabels;
+        $titulo = $orcamento['codigo'];
+        $subtitulo = $orcamento['titulo'];
+        $breadcrumbs = [['label' => 'Portal', 'url' => '/portal'], ['label' => $orcamento['codigo'], 'url' => '']];
+
+        ob_start();
+        require APP_PATH . '/Views/portal/orcamento_show.php';
+        $content = ob_get_clean();
+        require APP_PATH . '/Views/layouts/main.php';
+    }
+
+    public function aprovarOrcamento(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $cliente = $this->clienteDoUsuario();
+        if (!$cliente) {
+            $_SESSION['flash_error'] = 'Cliente não vinculado.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $orcamento = $this->buscarOrcamentoDoCliente($id, (int)$cliente['id']);
+        if (!$orcamento || $orcamento['status'] !== 'enviado') {
+            $_SESSION['flash_error'] = 'Orçamento não encontrado ou não disponível para aprovação.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        try {
+            db()->prepare("UPDATE orcamentos SET status = 'aprovado', aprovado_at = COALESCE(aprovado_at, NOW()), updated_at = NOW() WHERE id = ?")
+                ->execute([$id]);
+            Auth::registrarAuditoria('orcamentos', 'aprovar_portal', (int)$id);
+            $_SESSION['flash_success'] = 'Orçamento aprovado! Entraremos em contato para dar continuidade.';
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'Erro ao aprovar orçamento: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/portal/orcamentos/' . $id);
+        exit;
+    }
+
+    public function recusarOrcamento(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $cliente = $this->clienteDoUsuario();
+        if (!$cliente) {
+            $_SESSION['flash_error'] = 'Cliente não vinculado.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $orcamento = $this->buscarOrcamentoDoCliente($id, (int)$cliente['id']);
+        if (!$orcamento || $orcamento['status'] !== 'enviado') {
+            $_SESSION['flash_error'] = 'Orçamento não encontrado ou não disponível.';
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $motivo = trim($_POST['motivo_recusa'] ?? '');
+
+        try {
+            $obs = $orcamento['observacoes'] ?? '';
+            $novaObs = "[Recusado pelo cliente em " . date('d/m/Y H:i') . "]";
+            if ($motivo !== '') {
+                $novaObs .= " Motivo: " . $motivo;
+            }
+            $obs = $obs !== '' ? $obs . "\n\n" . $novaObs : $novaObs;
+
+            db()->prepare("UPDATE orcamentos SET status = 'recusado', observacoes = ?, updated_at = NOW() WHERE id = ?")
+                ->execute([$obs, $id]);
+            Auth::registrarAuditoria('orcamentos', 'recusar_portal', (int)$id);
+            $_SESSION['flash_success'] = 'Orçamento recusado. Agradecemos o retorno.';
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'Erro ao recusar orçamento: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/portal');
+        exit;
+    }
+
     public function solicitarOrcamento(): void
     {
         if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
@@ -110,7 +225,16 @@ class PortalController
 
         $observacoes = $prazo !== '' ? 'Prazo desejado: ' . $prazo : '';
         if ($arquivos) {
-            $linhas = array_map(fn($arquivo) => '- ' . $arquivo['nome'] . ': ' . $arquivo['url'], $arquivos);
+            $imageExts = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tif', 'tiff', 'svg'];
+            $linhas = [];
+            foreach ($arquivos as $arquivo) {
+                $ext = strtolower(pathinfo($arquivo['nome'], PATHINFO_EXTENSION));
+                if (in_array($ext, $imageExts, true)) {
+                    $linhas[] = '<a href="' . htmlspecialchars($arquivo['url']) . '" target="_blank"><img src="' . htmlspecialchars($arquivo['url']) . '" alt="' . htmlspecialchars($arquivo['nome']) . '" style="max-width:200px;max-height:200px;border-radius:4px;margin:4px;border:1px solid #ddd"></a>';
+                } else {
+                    $linhas[] = '<a href="' . htmlspecialchars($arquivo['url']) . '" target="_blank">' . htmlspecialchars($arquivo['nome']) . '</a>';
+                }
+            }
             $observacoes .= ($observacoes !== '' ? "\n\n" : '') . "Arquivos enviados:\n" . implode("\n", $linhas);
         }
 
@@ -125,7 +249,7 @@ class PortalController
             'produto_interesse' => $produto,
             'descricao' => $descricao,
             'origem' => 'outro',
-            'estagio' => 'novo_lead',
+            'estagio' => 'nova_solicitacao',
             'valor_estimado' => null,
             'probabilidade' => 50,
             'data_follow_up' => null,
@@ -254,6 +378,24 @@ class PortalController
         try {
             $stmt = db()->prepare("SELECT * FROM clientes WHERE id = ? AND status = 'ativo'");
             $stmt->execute([$id]);
+            return $stmt->fetch() ?: null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function buscarOrcamentoDoCliente(string $id, int $clienteId): ?array
+    {
+        try {
+            $stmt = db()->prepare(
+                "SELECT o.*, c.nome AS cliente_nome, c.cpf_cnpj, c.telefone, c.whatsapp, c.email AS cliente_email,
+                        u.nome AS vendedor_nome
+                 FROM orcamentos o
+                 LEFT JOIN clientes c ON c.id = o.cliente_id
+                 LEFT JOIN usuarios u ON u.id = o.vendedor_id
+                 WHERE o.id = ? AND o.cliente_id = ?"
+            );
+            $stmt->execute([$id, $clienteId]);
             return $stmt->fetch() ?: null;
         } catch (\Exception $e) {
             return null;

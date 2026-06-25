@@ -55,8 +55,9 @@ const KROMA = {
             // Overlay mobile
             this.overlay?.addEventListener('click', () => this.closeMobile());
 
-            // Marca item ativo
-            this.markActive();
+            // Marca item ativo e accordion
+            const hasActive = this.markActive();
+            this.initAccordion(hasActive);
         },
 
         toggle() {
@@ -81,14 +82,91 @@ const KROMA = {
 
         markActive() {
             const path = window.location.pathname;
-            document.querySelectorAll('.nav-item').forEach(item => {
+            let found = false;
+            document.querySelectorAll('.submenu .nav-item').forEach(item => {
                 const href = item.getAttribute('href') || '';
                 if (href && path.startsWith(href) && href !== '/') {
                     item.classList.add('active');
+                    const group = item.closest('.menu-group');
+                    if (group) {
+                        this.openGroup(group, true);
+                        found = true;
+                    }
                 } else if (href === path) {
                     item.classList.add('active');
+                    const group = item.closest('.menu-group');
+                    if (group) {
+                        this.openGroup(group, true);
+                        found = true;
+                    }
                 }
             });
+            return found;
+        },
+
+        // ===============================================
+        // ACCORDION
+        // ===============================================
+        initAccordion(hasActive) {
+            const groups = document.querySelectorAll('.menu-group');
+            if (!groups.length) return;
+
+            // Click handler on all toggles
+            document.querySelectorAll('.menu-toggle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const group = btn.closest('.menu-group');
+                    if (!group) return;
+                    const isOpen = btn.getAttribute('aria-expanded') === 'true';
+                    if (isOpen) {
+                        this.closeGroup(group);
+                    } else {
+                        // Accordion: close all others, open this one
+                        groups.forEach(g => {
+                            if (g !== group) this.closeGroup(g);
+                        });
+                        this.openGroup(group, true);
+                    }
+                });
+
+                // Tooltip for collapsed sidebar
+                const label = btn.querySelector('span')?.textContent || '';
+                if (label) btn.setAttribute('data-tooltip', label);
+            });
+
+            // Only restore from localStorage if no active item was found
+            if (!hasActive) {
+                this.restoreAccordion();
+            }
+        },
+
+        openGroup(group, save) {
+            const btn = group.querySelector('.menu-toggle');
+            const sub = group.querySelector('.submenu');
+            if (!btn || !sub) return;
+            btn.setAttribute('aria-expanded', 'true');
+            sub.classList.add('open');
+            if (save) {
+                const name = group.getAttribute('data-group');
+                if (name) localStorage.setItem('sidebar_group_open', name);
+            }
+        },
+
+        closeGroup(group) {
+            const btn = group.querySelector('.menu-toggle');
+            const sub = group.querySelector('.submenu');
+            if (!btn || !sub) return;
+            btn.setAttribute('aria-expanded', 'false');
+            sub.classList.remove('open');
+        },
+
+        restoreAccordion() {
+            const saved = localStorage.getItem('sidebar_group_open');
+            if (!saved) return;
+            const group = document.querySelector(`.menu-group[data-group="${saved}"]`);
+            if (group) {
+                this.openGroup(group, false);
+            }
         }
     },
 

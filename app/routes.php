@@ -41,6 +41,9 @@ $router->get('/alertas', 'AlertaController@index');
 // Portal do Cliente
 $router->get('/portal', 'PortalController@index');
 $router->post('/portal/solicitar-orcamento', 'PortalController@solicitarOrcamento');
+$router->get('/portal/orcamentos/:id', 'PortalController@verOrcamento');
+$router->post('/portal/orcamentos/:id/aprovar', 'PortalController@aprovarOrcamento');
+$router->post('/portal/orcamentos/:id/recusar', 'PortalController@recusarOrcamento');
 
 // BI Executivo
 $router->get('/bi', 'BiController@index');
@@ -95,6 +98,7 @@ $router->get('/crm/leads/:id', 'CrmController@verLead');
 $router->get('/crm/leads/:id/editar', 'CrmController@editarLead');
 $router->post('/crm/leads/:id/editar', 'CrmController@atualizarLead');
 $router->post('/crm/leads/:id/mover', 'CrmController@moverLead');
+$router->post('/crm/leads/:id/concluir', 'CrmController@concluirLead');
 $router->post('/crm/leads/:id/excluir', 'CrmController@excluirLead');
 
 // Orçamentos
@@ -168,6 +172,13 @@ $router->get('/financeiro/pagar/novo', 'FinanceiroController@novoPagar');
 $router->post('/financeiro/pagar/novo', 'FinanceiroController@criarPagar');
 $router->post('/financeiro/pagar/:id/baixar', 'FinanceiroController@baixarPagar');
 $router->post('/financeiro/pagar/:id/cancelar', 'FinanceiroController@cancelarPagar');
+
+// DRE Gerencial
+$router->get('/financeiro/dre', 'DreController@index');
+$router->get('/financeiro/dre/categorias', 'DreController@categorias');
+$router->post('/financeiro/dre/categorias/novo', 'DreController@criarCategoria');
+$router->post('/financeiro/dre/categorias/:id/editar', 'DreController@atualizarCategoria');
+$router->post('/financeiro/dre/categorias/:id/excluir', 'DreController@excluirCategoria');
 
 // Comissões
 $router->get('/comissoes', 'ComissaoController@index');
@@ -248,6 +259,14 @@ $router->post('/chat/canais/:id/mensagens', 'ChatController@enviarMensagem');
 // Empresa (configurações)
 $router->get('/empresa', 'EmpresaController@configuracoes');
 $router->post('/empresa', 'EmpresaController@salvar');
+
+// Site publico / Landing Page
+$router->get('/site', 'SiteController@index');
+$router->post('/site/config', 'SiteController@salvarConfig');
+$router->post('/site/servicos/salvar', 'SiteController@salvarServico');
+$router->post('/site/servicos/:id/excluir', 'SiteController@excluirServico');
+$router->post('/site/portfolio/salvar', 'SiteController@salvarPortfolio');
+$router->post('/site/portfolio/:id/excluir', 'SiteController@excluirPortfolio');
 
 // Meu perfil
 $router->get('/perfil', 'UsuarioController@meuPerfil');

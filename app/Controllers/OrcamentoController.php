@@ -427,7 +427,23 @@ class OrcamentoController
         }
 
         try {
-            db()->prepare("UPDATE orcamentos SET status = ?, updated_at = NOW() WHERE id = ?")->execute([$status, $id]);
+            $pdo = db();
+            $pdo->prepare("UPDATE orcamentos SET status = ?, updated_at = NOW() WHERE id = ?")->execute([$status, $id]);
+
+            // Sincroniza lead stage conforme status do orçamento
+            $stmt = $pdo->prepare("SELECT lead_id FROM orcamentos WHERE id = ?");
+            $stmt->execute([$id]);
+            $orcamento = $stmt->fetch();
+
+            if (!empty($orcamento['lead_id'])) {
+                if ($status === 'enviado') {
+                    $pdo->prepare("UPDATE leads SET estagio = 'orcamento_enviado', updated_at = NOW() WHERE id = ? AND concluido_at IS NULL")
+                        ->execute([$orcamento['lead_id']]);
+                } elseif ($status === 'cancelado') {
+                    $pdo->prepare("UPDATE leads SET estagio = 'perdido', updated_at = NOW() WHERE id = ? AND concluido_at IS NULL")
+                        ->execute([$orcamento['lead_id']]);
+                }
+            }
 
             // Notificar cliente via WhatsApp ao enviar orçamento
             if ($status === 'enviado') {

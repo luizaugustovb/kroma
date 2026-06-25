@@ -32,31 +32,23 @@ $financeiroClasses = [
     'cancelado' => 'badge-danger',
 ];
 $leadClasses = [
-    'novo_lead' => 'badge-info',
-    'primeiro_contato' => 'badge-primary',
-    'orcamento_rapido' => 'badge-warning',
-    'orcamento_ia' => 'badge-primary',
+    'nova_solicitacao' => 'badge-info',
+    'orcamento' => 'badge-warning',
     'orcamento_enviado' => 'badge-info',
-    'negociacao' => 'badge-warning',
     'aprovado' => 'badge-success',
     'em_producao' => 'badge-primary',
     'entregue' => 'badge-success',
     'pos_venda' => 'badge-info',
-    'recorrencia' => 'badge-primary',
     'perdido' => 'badge-danger',
 ];
 $leadLabels = [
-    'novo_lead' => 'Novo lead',
-    'primeiro_contato' => 'Primeiro contato',
-    'orcamento_rapido' => 'Orçamento rápido',
-    'orcamento_ia' => 'Orçamento IA',
+    'nova_solicitacao' => 'Nova solicitação',
+    'orcamento' => 'Orçamento',
     'orcamento_enviado' => 'Orçamento enviado',
-    'negociacao' => 'Negociação',
     'aprovado' => 'Aprovado',
     'em_producao' => 'Em produção',
     'entregue' => 'Entregue',
     'pos_venda' => 'Pós-venda',
-    'recorrencia' => 'Recorrência',
     'perdido' => 'Perdido',
 ];
 
@@ -174,8 +166,23 @@ function portalPrazoBadge(?string $data, string $status): array {
                     </div>
                     <div class="col-12 d-flex justify-content-end">
                         <button class="btn btn-primary" type="submit" <?= $cliente ? '' : 'disabled' ?>><i class="bi bi-send"></i> Enviar solicitação</button>
-                    </div>
-                </div>
+    </div>
+</div>
+
+<style>
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: rgba(0, 163, 224, 0.06); }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.clickable-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+            var href = this.getAttribute('data-href');
+            if (href) window.location.href = href;
+        });
+    });
+});
+</script>
             </form>
         </div>
     </div>
@@ -201,7 +208,7 @@ function portalPrazoBadge(?string $data, string $status): array {
                     <tbody>
                         <?php foreach ($orcamentos as $orcamento): ?>
                         <?php [$validadeClass, $validadeLabel] = portalPrazoBadge($orcamento['validade'], $orcamento['status']); ?>
-                        <tr>
+                        <tr class="clickable-row" data-href="<?= APP_URL ?>/portal/orcamentos/<?= $orcamento['id'] ?>">
                             <td><strong><?= htmlspecialchars($orcamento['codigo']) ?></strong><div class="small text-muted"><?= htmlspecialchars($orcamento['titulo']) ?></div></td>
                             <td><strong><?= portalMoeda((float)$orcamento['total']) ?></strong></td>
                             <td><span class="badge <?= $validadeClass ?>"><?= $validadeLabel ?></span></td>

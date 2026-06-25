@@ -48,6 +48,42 @@ ALTER TABLE orcamentos
 
 ---
 
+```sql
+-- Adicionado em 2026-06-25 — DRE Gerencial: categorias financeiras
+CREATE TABLE IF NOT EXISTS categorias_financeiras (
+    id            INT UNSIGNED   AUTO_INCREMENT PRIMARY KEY,
+    nome          VARCHAR(100)   NOT NULL,
+    tipo          ENUM('receita','imposto','custo_variavel','despesa_operacional','depreciacao','juros') NOT NULL,
+    palavras_chave VARCHAR(500) DEFAULT NULL COMMENT 'Palavras-chave para matching automático',
+    created_at    DATETIME       DEFAULT NULL,
+    updated_at    DATETIME       DEFAULT NULL,
+    INDEX idx_tipo (tipo)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO categorias_financeiras (nome, tipo, palavras_chave) VALUES
+('Impostos', 'imposto', 'imposto,simples,iss,icms,pis,cofins,irpj,csll,prefeitura,federal,estadual,nota fiscal,tributo,das,gnre,parcelamento'),
+('Materiais', 'custo_variavel', 'material,matéria prima,insumo,chapas,adesivo,lona,papel,placa,mdf,acrilico,pvc,substrato'),
+('Tintas', 'custo_variavel', 'tinta,tonner,corante,solvente,verniz,revelador,cartucho,ink,inkjet'),
+('Laminação', 'custo_variavel', 'laminação,laminado,lamina,film,proteção uv,velatura'),
+('Terceirizações', 'custo_variavel', 'terceiro,terceirizado,terceirização,facção,serviço externo,acabamento externo'),
+('Fretes', 'custo_variavel', 'frete,transporte,logística,entrega,coleta,correio,transportadora,carreto'),
+('Comissões', 'custo_variavel', 'comissão,comissao,comissionamento,vendedor'),
+('Pró-labore / Salários', 'despesa_operacional', 'salário,salario,pró-labore,prolabore,folha,decimo,13°,fgts,inss,rescisão,holerite'),
+('Energia', 'despesa_operacional', 'energia,elétrica,luz,conta de luz,eletricidade,cemig,cpfl,energisa'),
+('Internet', 'despesa_operacional', 'internet,banda larga,provedor,fibra,link,rede,telecom,telefonia'),
+('Marketing', 'despesa_operacional', 'marketing,propaganda,publicidade,anúncio,midia,google,facebook,instagram,site,seo,tráfego'),
+('Sistemas / Software', 'despesa_operacional', 'software,sistema,assinatura,saas,hospedagem,dominio,nuvem,licença,mensalidade sistema,erp'),
+('Contabilidade', 'despesa_operacional', 'contabilidade,contador,escritório contábil,bpo fiscal,bpo contabil,contabil'),
+('Manutenção', 'despesa_operacional', 'manutenção,manutencao,conserto,reparo,assistência técnica,revisão,peça de reposição'),
+('Combustível', 'despesa_operacional', 'combustível,gasolina,etanol,diesel,alcool,posto,abastecimento'),
+('Despesas Bancárias', 'despesa_operacional', 'tarifa,taxa bancária,juros banco,anuidade cartão,custo financeiro,ted,doc,pix,boletagem,boleto'),
+('Outras Despesas', 'despesa_operacional', ''),
+('Depreciação', 'depreciacao', 'depreciação,depreciacao,amortização,amortizacao'),
+('Juros', 'juros', 'juros,multa,correção,encargo financeiro,juro mora,comissão permanencia');
+```
+
+---
+
 ## 🔧 Funcionalidades Pendentes
 
 ---

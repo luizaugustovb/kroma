@@ -258,6 +258,51 @@ CREATE TABLE IF NOT EXISTS leads (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================================
+-- TABELAS: site publico / landing page
+-- ============================================================
+CREATE TABLE IF NOT EXISTS site_configuracoes (
+    id                  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    google_analytics_id VARCHAR(80),
+    seo_titulo          VARCHAR(180),
+    seo_descricao       VARCHAR(320),
+    seo_keywords        TEXT,
+    canonical_url       VARCHAR(300),
+    hero_badge          VARCHAR(120),
+    hero_titulo         VARCHAR(220),
+    hero_subtitulo      TEXT,
+    hero_cta_texto      VARCHAR(80),
+    hero_cta_secundario VARCHAR(80),
+    hero_image_url      VARCHAR(500),
+    created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at          DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS site_servicos (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    titulo      VARCHAR(150) NOT NULL,
+    descricao   TEXT,
+    icone       VARCHAR(80) DEFAULT 'bi-stars',
+    ordem       INT DEFAULT 0,
+    ativo       TINYINT(1) DEFAULT 1,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_ativo_ordem (ativo, ordem)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS site_portfolio (
+    id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    titulo      VARCHAR(150) NOT NULL,
+    categoria   VARCHAR(100),
+    descricao   TEXT,
+    imagem_url  VARCHAR(500),
+    ordem       INT DEFAULT 0,
+    ativo       TINYINT(1) DEFAULT 1,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_ativo_ordem (ativo, ordem)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
 -- TABELA: historico_leads
 -- ============================================================
 CREATE TABLE IF NOT EXISTS historico_leads (
@@ -1685,3 +1730,41 @@ INSERT INTO configuracoes (chave, valor, tipo, grupo, label) VALUES
 -- Empresa padrão
 INSERT INTO empresas (razao_social, nome_fantasia, email) VALUES
 ('KROMA PRINT LTDA', 'KROMA PRINT', 'contato@kromaprint.com.br');
+
+-- Conteudo inicial da landing page
+INSERT INTO site_configuracoes
+    (google_analytics_id, seo_titulo, seo_descricao, seo_keywords, canonical_url, hero_badge, hero_titulo, hero_subtitulo, hero_cta_texto, hero_cta_secundario, hero_image_url, created_at)
+SELECT
+    '',
+    'KROMA PRINT - Comunicação visual, fachadas, DTF e impressão digital',
+    'Comunicação visual completa para empresas: fachadas em ACM, banners, lonas, adesivos, DTF, uniformes, brindes e painéis de LED.',
+    'comunicação visual, fachada acm, impressão digital, banners, lonas, adesivos, dtf, uniformes personalizados, brindes personalizados, painel de led',
+    '',
+    'Comunicação visual completa',
+    'Comunicação visual que sai bonita no layout e impecável na produção.',
+    'Fachadas, lonas, adesivos, DTF, uniformes, brindes e painéis de LED com atendimento rápido e acompanhamento comercial pelo CRM.',
+    'Solicitar Orçamento',
+    'Falar no WhatsApp',
+    '',
+    NOW()
+WHERE NOT EXISTS (SELECT 1 FROM site_configuracoes);
+
+INSERT INTO site_servicos (titulo, icone, descricao, ordem, ativo, created_at)
+SELECT * FROM (
+    SELECT 'Fachadas e ACM', 'bi-shop', 'ACM, letras caixa, totens e sinalização para destacar sua marca.', 10, 1, NOW()
+    UNION ALL SELECT 'Banners e Lonas', 'bi-image', 'Impressão em grandes formatos para eventos, obras e pontos de venda.', 20, 1, NOW()
+    UNION ALL SELECT 'DTF e Uniformes', 'bi-printer', 'Personalização têxtil para equipes, campanhas e revendas.', 30, 1, NOW()
+    UNION ALL SELECT 'Adesivos e Envelopamento', 'bi-layers', 'Recorte, impressão, laminação e aplicação profissional.', 40, 1, NOW()
+    UNION ALL SELECT 'Brindes Personalizados', 'bi-gift', 'Produtos promocionais sob demanda para sua empresa.', 50, 1, NOW()
+    UNION ALL SELECT 'Paineis de LED', 'bi-display', 'Locação, operação e conteúdo para eventos e mídia indoor.', 60, 1, NOW()
+) AS seed_site_servicos
+WHERE NOT EXISTS (SELECT 1 FROM site_servicos);
+
+INSERT INTO site_portfolio (titulo, categoria, descricao, imagem_url, ordem, ativo, created_at)
+SELECT * FROM (
+    SELECT 'Fachadas comerciais', 'Fachadas', 'ACM, letras e iluminação para lojas.', '', 10, 1, NOW()
+    UNION ALL SELECT 'Eventos e campanhas', 'Eventos', 'Lonas, banners e sinalização promocional.', '', 20, 1, NOW()
+    UNION ALL SELECT 'Frotas e adesivos', 'Adesivos', 'Envelopamento e identidade visual veicular.', '', 30, 1, NOW()
+    UNION ALL SELECT 'Uniformes DTF', 'DTF', 'Personalização têxtil com acabamento profissional.', '', 40, 1, NOW()
+) AS seed_site_portfolio
+WHERE NOT EXISTS (SELECT 1 FROM site_portfolio);

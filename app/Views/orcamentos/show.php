@@ -127,6 +127,40 @@ $statusClasses = [
             </div>
         </div>
 
+        <?php if (!empty($orcamento['arquivo_projeto'])): 
+            $arqExt = strtolower(pathinfo($orcamento['arquivo_projeto'], PATHINFO_EXTENSION));
+            $arqUrl = APP_URL . '/public/uploads/orcamentos/' . rawurlencode(basename($orcamento['arquivo_projeto']));
+            $isImage = in_array($arqExt, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true);
+        ?>
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="card-title"><i class="bi bi-paperclip me-2 text-info"></i>Arquivo do projeto</h6>
+                <span class="badge badge-info"><?= strtoupper($arqExt) ?></span>
+            </div>
+            <div class="p-3 text-center">
+                <?php if ($isImage): ?>
+                    <a href="<?= htmlspecialchars($arqUrl) ?>" target="_blank" rel="noopener">
+                        <img src="<?= htmlspecialchars($arqUrl) ?>" alt="Arquivo do projeto"
+                             style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border-color);cursor:zoom-in">
+                    </a>
+                    <div class="mt-2">
+                        <a href="<?= htmlspecialchars($arqUrl) ?>" class="btn btn-sm btn-secondary" download>
+                            <i class="bi bi-download"></i> Baixar arquivo
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <div class="d-flex flex-column align-items-center gap-2 py-3">
+                        <i class="bi <?= $arqExt === 'pdf' ? 'bi-file-earmark-pdf' : ($arqExt === 'zip' ? 'bi-file-earmark-zip' : 'bi-file-earmark') ?> fs-1 text-muted"></i>
+                        <span class="fw-semibold"><?= htmlspecialchars(basename($orcamento['arquivo_projeto'])) ?></span>
+                        <a href="<?= htmlspecialchars($arqUrl) ?>" class="btn btn-primary btn-sm" download>
+                            <i class="bi bi-download"></i> Baixar <?= strtoupper($arqExt) ?>
+                        </a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="card mb-3">
             <div class="card-header">
                 <h6 class="card-title"><i class="bi bi-percent me-2 text-primary-kroma"></i>Comissão</h6>

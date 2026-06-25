@@ -1,16 +1,12 @@
 <?php
 $estagioLabels = [
-    'novo_lead' => 'Novo Lead',
-    'primeiro_contato' => 'Primeiro Contato',
-    'orcamento_rapido' => 'Orçamento Rápido',
-    'orcamento_ia' => 'Orçamento IA',
+    'nova_solicitacao' => 'Nova Solicitação',
+    'orcamento' => 'Orçamento',
     'orcamento_enviado' => 'Orçamento Enviado',
-    'negociacao' => 'Negociação',
     'aprovado' => 'Aprovado',
     'em_producao' => 'Em Produção',
     'entregue' => 'Entregue',
     'pos_venda' => 'Pós-venda',
-    'recorrencia' => 'Recorrência',
     'perdido' => 'Perdido',
 ];
 ?>
@@ -42,12 +38,36 @@ $estagioLabels = [
                 <h6 class="card-title"><i class="bi bi-paperclip me-2 text-success-kroma"></i>Arquivos enviados</h6>
                 <span class="badge badge-info"><?= count($arquivosLead) ?> arquivo(s)</span>
             </div>
-            <div class="p-3 d-flex gap-2 flex-wrap">
+            <div class="p-3">
+                <div class="row g-2">
                 <?php foreach ($arquivosLead as $arquivo): ?>
-                <a class="btn btn-secondary btn-sm" href="<?= htmlspecialchars($arquivo['url']) ?>" target="_blank" rel="noopener">
-                    <i class="bi bi-box-arrow-up-right"></i> <?= htmlspecialchars($arquivo['nome']) ?>
-                </a>
+                    <?php if (!empty($arquivo['imagem'])): ?>
+                    <div class="col-md-6">
+                        <a class="d-block text-decoration-none border-kroma rounded-kroma overflow-hidden bg-white" href="<?= htmlspecialchars($arquivo['url']) ?>" target="_blank" rel="noopener">
+                            <div class="ratio ratio-16x9 bg-light">
+                                <img src="<?= htmlspecialchars($arquivo['url']) ?>" alt="<?= htmlspecialchars($arquivo['nome']) ?>" style="width:100%;height:100%;object-fit:cover;">
+                            </div>
+                            <div class="p-2 d-flex align-items-center justify-content-between gap-2">
+                                <span class="small text-truncate" style="color:var(--text-primary)"><i class="bi bi-image me-1"></i><?= htmlspecialchars($arquivo['nome']) ?></span>
+                                <span class="badge badge-info">Ver foto</span>
+                            </div>
+                        </a>
+                    </div>
+                    <?php else: ?>
+                    <div class="col-md-6">
+                        <div class="border-kroma rounded-kroma p-2 d-flex align-items-center justify-content-between gap-2 bg-white">
+                            <div class="text-truncate">
+                                <div class="fw-bold text-truncate" style="font-size:13px;color:var(--text-primary)"><i class="bi bi-paperclip me-1"></i><?= htmlspecialchars($arquivo['nome']) ?></div>
+                                <div class="small text-muted"><?= htmlspecialchars(strtoupper($arquivo['extensao'] ?: 'arquivo')) ?></div>
+                            </div>
+                            <a class="btn btn-secondary btn-sm flex-shrink-0" href="<?= htmlspecialchars($arquivo['url']) ?>" target="_blank" rel="noopener" download>
+                                <i class="bi bi-download"></i> Baixar
+                            </a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 <?php endforeach; ?>
+                </div>
             </div>
         </div>
         <?php endif; ?>

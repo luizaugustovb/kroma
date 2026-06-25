@@ -21,29 +21,29 @@ class CrmController
     public function kanban(): void
     {
         $estagios = [
-            'novo_lead'         => ['label' => 'Novo Lead',          'cor' => '#6C63FF'],
-            'primeiro_contato'  => ['label' => 'Primeiro Contato',   'cor' => '#00B0FF'],
-            'orcamento_rapido'  => ['label' => 'Orçamento Rápido',   'cor' => '#FFAA00'],
-            'orcamento_ia'      => ['label' => 'Orçamento IA',       'cor' => '#A855F7'],
+            'nova_solicitacao'  => ['label' => 'Nova Solicitação',   'cor' => '#6C63FF'],
+            'orcamento'         => ['label' => 'Orçamento',          'cor' => '#FFAA00'],
             'orcamento_enviado' => ['label' => 'Orçamento Enviado',  'cor' => '#F97316'],
-            'negociacao'        => ['label' => 'Negociação',         'cor' => '#FF6584'],
             'aprovado'          => ['label' => 'Aprovado',           'cor' => '#00D68F'],
             'em_producao'       => ['label' => 'Em Produção',        'cor' => '#14B8A6'],
             'entregue'          => ['label' => 'Entregue',           'cor' => '#22C55E'],
             'pos_venda'         => ['label' => 'Pós-venda',          'cor' => '#8B5CF6'],
-            'recorrencia'       => ['label' => 'Recorrência',        'cor' => '#06B6D4'],
             'perdido'           => ['label' => 'Perdido',            'cor' => '#FF3D71'],
         ];
 
-        // Carrega leads agrupados por estágio
+        $exibirConcluidos = ($_GET['concluidos'] ?? '') === '1';
+
+        // Carrega leads agrupados por estágio (exclui concluídos, a menos que filtro ativo)
         $leads = [];
         try {
-            $stmt = db()->prepare(
-                "SELECT l.*, u.nome AS vendedor_nome FROM leads l
-                 LEFT JOIN usuarios u ON u.id = l.vendedor_id
-                 ORDER BY l.prioridade DESC, l.created_at DESC"
-            );
-            $stmt->execute();
+            $sql = "SELECT l.*, u.nome AS vendedor_nome FROM leads l
+                    LEFT JOIN usuarios u ON u.id = l.vendedor_id";
+            if (!$exibirConcluidos) {
+                $sql .= " WHERE l.concluido_at IS NULL";
+            }
+            $sql .= " ORDER BY l.prioridade DESC, l.created_at DESC";
+
+            $stmt = db()->query($sql);
             $rows = $stmt->fetchAll();
 
             foreach ($rows as $row) {
@@ -54,6 +54,7 @@ class CrmController
         $titulo     = 'CRM — Kanban de Vendas';
         $subtitulo  = 'Acompanhe o funil de vendas em tempo real';
         $breadcrumbs = [['label' => 'CRM', 'url' => '']];
+        $exibirConcluidos = $exibirConcluidos;
 
         ob_start();
         require APP_PATH . '/Views/crm/kanban.php';
@@ -132,7 +133,7 @@ class CrmController
             'produto_interesse'  => trim($_POST['produto_interesse'] ?? ''),
             'descricao'          => trim($_POST['descricao'] ?? ''),
             'origem'             => $_POST['origem'] ?? 'outro',
-            'estagio'            => $_POST['estagio'] ?? 'novo_lead',
+            'estagio'            => $_POST['estagio'] ?? 'nova_solicitacao',
             'valor_estimado'     => !empty($_POST['valor_estimado']) ? floatval(str_replace(['.', ','], ['', '.'], $_POST['valor_estimado'])) : null,
             'probabilidade'      => (int)($_POST['probabilidade'] ?? 50),
             'data_follow_up'     => $_POST['data_follow_up'] ?? null,
@@ -207,8 +208,15 @@ class CrmController
      */
     public function leadJson(string $id): void
     {
+        $lead = $this->buscarLead($id);
+        if ($lead) {
+            $observacoes = $lead['observacoes'] ?? '';
+            $lead['arquivos'] = $this->arquivosDoLead($observacoes);
+            $lead['observacoes_limpa'] = $this->observacoesSemArquivos($observacoes);
+        }
+
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['lead' => $this->buscarLead($id)], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['lead' => $lead], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -259,7 +267,7 @@ class CrmController
             'produto_interesse'  => trim($_POST['produto_interesse'] ?? ''),
             'descricao'          => trim($_POST['descricao'] ?? ''),
             'origem'             => $_POST['origem'] ?? 'outro',
-            'estagio'            => $_POST['estagio'] ?? 'novo_lead',
+            'estagio'            => $_POST['estagio'] ?? 'nova_solicitacao',
             'valor_estimado'     => !empty($_POST['valor_estimado']) ? floatval(str_replace(['.', ','], ['', '.'], $_POST['valor_estimado'])) : null,
             'probabilidade'      => (int)($_POST['probabilidade'] ?? 50),
             'data_follow_up'     => $_POST['data_follow_up'] ?: null,
@@ -305,9 +313,8 @@ class CrmController
         $novoEstagio = $input['estagio'] ?? '';
 
         $estagiosValidos = [
-            'novo_lead','primeiro_contato','orcamento_rapido','orcamento_ia',
-            'orcamento_enviado','negociacao','aprovado','em_producao',
-            'entregue','pos_venda','recorrencia','perdido'
+            'nova_solicitacao','orcamento','orcamento_enviado',
+            'aprovado','em_producao','entregue','pos_venda','perdido'
         ];
 
         if (!in_array($novoEstagio, $estagiosValidos)) {
@@ -316,14 +323,34 @@ class CrmController
         }
 
         try {
-            // Busca estágio atual para histórico
-            $stmt = db()->prepare("SELECT estagio FROM leads WHERE id = ?");
+            // Busca lead completo
+            $stmt = db()->prepare("SELECT * FROM leads WHERE id = ?");
             $stmt->execute([$id]);
             $lead = $stmt->fetch();
 
             if (!$lead) {
                 echo json_encode(['success' => false, 'message' => 'Lead não encontrado']);
                 exit;
+            }
+
+            $estagioAnterior = $lead['estagio'];
+
+            // Se mover para "orcamento", criar orçamento automaticamente
+            if ($novoEstagio === 'orcamento') {
+                $orcamentoId = $this->criarOrcamentoDoLead($lead);
+                if ($orcamentoId) {
+                    // Auto-move para orcamento_enviado após criar
+                    $novoEstagio = 'orcamento_enviado';
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Erro ao criar orçamento.']);
+                    exit;
+                }
+            }
+
+            // Se mover para "perdido" vindo de estágios ativos, registra motivo
+            $descricaoHistorico = 'Estágio alterado via Kanban';
+            if ($novoEstagio === 'perdido' && !in_array($estagioAnterior, ['perdido', ''], true)) {
+                $descricaoHistorico = 'Lead perdido';
             }
 
             // Atualiza estágio
@@ -338,10 +365,40 @@ class CrmController
             $stmt->execute([
                 $id,
                 Auth::id(),
-                'Estágio alterado via Kanban',
-                $lead['estagio'],
+                $descricaoHistorico,
+                $estagioAnterior,
                 $novoEstagio
             ]);
+
+            echo json_encode(['success' => true]);
+        } catch (\Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    public function concluirLead(string $id): void
+    {
+        header('Content-Type: application/json');
+
+        try {
+            $stmt = db()->prepare("SELECT id, estagio FROM leads WHERE id = ?");
+            $stmt->execute([$id]);
+            $lead = $stmt->fetch();
+
+            if (!$lead) {
+                echo json_encode(['success' => false, 'message' => 'Lead não encontrado.']);
+                exit;
+            }
+
+            db()->prepare("UPDATE leads SET concluido_at = NOW(), estagio = 'pos_venda', updated_at = NOW() WHERE id = ?")
+                ->execute([$id]);
+
+            // Registra histórico
+            db()->prepare(
+                "INSERT INTO historico_leads (lead_id, usuario_id, tipo, descricao, estagio_anterior, estagio_novo, created_at)
+                 VALUES (?, ?, 'concluir', 'Atendimento concluído', ?, 'pos_venda', NOW())"
+            )->execute([$id, Auth::id(), $lead['estagio']]);
 
             echo json_encode(['success' => true]);
         } catch (\Exception $e) {
@@ -367,6 +424,54 @@ class CrmController
     }
 
     // Helpers
+    private function criarOrcamentoDoLead(array $lead): ?int
+    {
+        try {
+            $pdo = db();
+
+            // Gera código (mesma lógica do OrcamentoController)
+            $prefixo = 'ORC-' . date('Ym') . '-';
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM orcamentos WHERE codigo LIKE ?");
+            $stmt->execute([$prefixo . '%']);
+            $seq = (int)$stmt->fetchColumn() + 1;
+            $codigo = $prefixo . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+
+            $dados = [
+                'codigo' => $codigo,
+                'cliente_id' => !empty($lead['cliente_id']) ? (int)$lead['cliente_id'] : null,
+                'lead_id' => (int)$lead['id'],
+                'vendedor_id' => !empty($lead['vendedor_id']) ? (int)$lead['vendedor_id'] : null,
+                'tipo' => 'rapido',
+                'status' => 'rascunho',
+                'titulo' => 'Orçamento - ' . ($lead['produto_interesse'] ?: $lead['nome']),
+                'descricao' => $lead['descricao'] ?? '',
+                'validade' => date('Y-m-d', strtotime('+7 days')),
+                'observacoes' => $lead['observacoes'] ?? '',
+                'tipo_preco' => 'cliente_final',
+                'margem_percent' => 35,
+                'impostos_percent' => 8,
+                'comissao_percent' => 5,
+                'desperdicio_percent' => 5,
+                'desconto_percent' => 0,
+                'desconto_valor' => 0,
+                'subtotal_custo' => 0,
+                'subtotal_venda' => 0,
+                'preco_minimo' => 0,
+                'lucro_previsto' => 0,
+                'total' => 0,
+            ];
+
+            $colunas = implode(', ', array_keys($dados));
+            $placeholders = ':' . implode(', :', array_keys($dados));
+            $pdo->prepare("INSERT INTO orcamentos ($colunas, created_at) VALUES ($placeholders, NOW())")
+                ->execute($dados);
+
+            return (int)$pdo->lastInsertId();
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     private function getVendedores(): array
     {
         try {
@@ -412,10 +517,29 @@ class CrmController
         }
 
         return array_map(function ($match) {
+            $url = rtrim(trim($match[2]), " \t\n\r\0\x0B,.;");
+            $path = parse_url($url, PHP_URL_PATH) ?: '';
+            $basename = rawurldecode(basename($path));
+            $label = trim($match[1]);
+            $nome = preg_match('/^arquivo enviado$/iu', $label) && $basename !== '' ? $basename : $label;
+            $ext = strtolower(pathinfo($basename ?: $nome, PATHINFO_EXTENSION));
+            $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
             return [
-                'nome' => trim($match[1]),
-                'url' => rtrim(trim($match[2]), " \t\n\r\0\x0B,.;"),
+                'nome' => $nome,
+                'url' => $url,
+                'extensao' => $ext,
+                'imagem' => $isImage,
             ];
         }, $matches);
+    }
+
+    private function observacoesSemArquivos(string $observacoes): string
+    {
+        $limpa = preg_replace('/-\s*.+?:\s*https?:\/\/\S+/u', '', $observacoes);
+        $limpa = preg_replace('/Arquivos enviados:\s*/iu', '', $limpa ?? '');
+        $linhas = array_filter(array_map('trim', preg_split('/\R/', $limpa ?? '')), fn($linha) => $linha !== '');
+
+        return trim(implode("\n", $linhas));
     }
 }

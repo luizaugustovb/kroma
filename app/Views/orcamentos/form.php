@@ -395,48 +395,6 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                     <textarea class="form-control" name="observacoes" rows="4" placeholder="Condições comerciais, validade e observações"><?= htmlspecialchars($orcamento['observacoes'] ?? '') ?></textarea>
                 </div>
             </div>
-
-            <?php if ($isEdicao): ?>
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="card-title"><i class="bi bi-paperclip me-2 text-primary-kroma"></i>Arquivo do Projeto</h6>
-                        <span class="badge badge-info">Mockup / Exemplo</span>
-                    </div>
-                    <div class="p-3">
-                        <p class="small text-muted mb-3">Envie o arquivo do projeto (imagem, PDF, etc.) para o cliente aprovar ou reprovar o orçamento.</p>
-                        <?php if (!empty($orcamento['arquivo_projeto'])): ?>
-                            <div class="d-flex align-items-center gap-2 mb-3 p-2 border-kroma rounded-kroma">
-                                <i class="bi bi-file-earmark-check text-success-kroma fs-5"></i>
-                                <div class="flex-grow-1">
-                                    <div class="fw-bold small"><?= htmlspecialchars(basename($orcamento['arquivo_projeto'])) ?></div>
-                                </div>
-                                <a href="<?= APP_URL ?>/public/uploads/orcamentos/<?= htmlspecialchars(basename($orcamento['arquivo_projeto'])) ?>" target="_blank" class="btn btn-secondary btn-sm"><i class="bi bi-eye"></i></a>
-                                <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/remover-arquivo" method="POST" class="d-inline">
-                                    <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
-                                    <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Remover arquivo?')"><i class="bi bi-trash"></i></button>
-                                </form>
-                            </div>
-                        <?php endif; ?>
-                        <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/upload-arquivo" method="POST" enctype="multipart/form-data">
-                            <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
-                            <div class="d-flex gap-2">
-                                <input type="file" class="form-control" name="arquivo_projeto" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.zip" required>
-                                <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-upload"></i> Enviar</button>
-                            </div>
-                            <div class="small text-muted mt-1">Formatos: PDF, JPG, PNG, ZIP. Máx. 10MB.</div>
-                        </form>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="card-title"><i class="bi bi-paperclip me-2 text-primary-kroma"></i>Arquivo do Projeto</h6>
-                    </div>
-                    <div class="p-3">
-                        <span class="badge badge-secondary">Salve o orçamento primeiro para anexar arquivos.</span>
-                    </div>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 
@@ -450,6 +408,48 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
     <input type="hidden" name="comissao_percent" value="0">
     <input type="hidden" name="margem_percent" value="0">
 </form>
+
+<?php if ($isEdicao): ?>
+    <div class="card mt-3">
+        <div class="card-header">
+            <h6 class="card-title"><i class="bi bi-paperclip me-2 text-primary-kroma"></i>Arquivo do Projeto</h6>
+            <span class="badge badge-info">Mockup / Exemplo</span>
+        </div>
+        <div class="p-3">
+            <p class="small text-muted mb-3">Envie o arquivo do projeto (imagem, PDF, etc.) para o cliente aprovar ou reprovar o orçamento.</p>
+            <?php if (!empty($orcamento['arquivo_projeto'])): ?>
+                <div class="d-flex align-items-center gap-2 mb-3 p-2 border-kroma rounded-kroma">
+                    <i class="bi bi-file-earmark-check text-success-kroma fs-5"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-bold small"><?= htmlspecialchars(basename($orcamento['arquivo_projeto'])) ?></div>
+                    </div>
+                    <a href="<?= APP_URL ?>/public/uploads/orcamentos/<?= htmlspecialchars(basename($orcamento['arquivo_projeto'])) ?>" target="_blank" class="btn btn-secondary btn-sm"><i class="bi bi-eye"></i></a>
+                    <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/remover-arquivo" method="POST" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                        <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Remover arquivo?')"><i class="bi bi-trash"></i></button>
+                    </form>
+                </div>
+            <?php endif; ?>
+            <form action="<?= APP_URL ?>/orcamentos/<?= $orcamento['id'] ?>/upload-arquivo" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                <div class="d-flex gap-2">
+                    <input type="file" class="form-control" name="arquivo_projeto" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,.zip" required>
+                    <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-upload"></i> Enviar</button>
+                </div>
+                <div class="small text-muted mt-1">Formatos: PDF, JPG, PNG, ZIP. Máx. 10MB.</div>
+            </form>
+        </div>
+    </div>
+<?php else: ?>
+    <div class="card mt-3">
+        <div class="card-header">
+            <h6 class="card-title"><i class="bi bi-paperclip me-2 text-primary-kroma"></i>Arquivo do Projeto</h6>
+        </div>
+        <div class="p-3">
+            <span class="badge badge-secondary">Salve o orçamento primeiro para anexar arquivos.</span>
+        </div>
+    </div>
+<?php endif; ?>
 
 <template id="itemTemplate">
     <?php renderOrcamentoItem([], 0, $contexto); ?>
