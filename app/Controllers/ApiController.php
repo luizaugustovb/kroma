@@ -42,6 +42,31 @@ class ApiController
         ]);
     }
 
+    public function produtoMateriais(string $id): void
+    {
+        try {
+            $stmt = db()->prepare(
+                "SELECT pm.material_id, pm.quantidade, pm.unidade, pm.observacao,
+                        m.nome, m.codigo, m.unidade AS material_unidade
+                 FROM produto_materiais pm
+                 JOIN materiais m ON m.id = pm.material_id
+                 WHERE pm.produto_id = ?
+                 ORDER BY pm.id"
+            );
+            $stmt->execute([(int)$id]);
+            $rows = $stmt->fetchAll();
+            foreach ($rows as &$row) {
+                $unid = $row['unidade'] ?: $row['material_unidade'] ?: 'un';
+                $qtd  = rtrim(rtrim(number_format((float)$row['quantidade'], 4, ',', '.'), '0'), ',');
+                $row['quantidade_formatada'] = $qtd . ' ' . $unid;
+                $row['label'] = ($row['codigo'] ? $row['codigo'] . ' - ' : '') . $row['nome'];
+            }
+            $this->json($rows);
+        } catch (\Exception $e) {
+            $this->json([]);
+        }
+    }
+
     private function query(string $sql): array
     {
         try {

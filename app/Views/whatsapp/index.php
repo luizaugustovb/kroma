@@ -126,9 +126,9 @@ function whatsappData(?string $data): string
                 </div>
                 <div class="d-flex justify-content-between">
                     <span>Endpoint</span>
-                    <span class="badge <?= !empty($empresa['endpoint_whatsapp']) ? 'badge-success' : 'badge-warning' ?>"><?= !empty($empresa['endpoint_whatsapp']) ? 'Configurado' : 'Pendente' ?></span>
+                    <span class="badge badge-success"><?= htmlspecialchars(($empresa['endpoint_whatsapp'] ?? '') ?: 'Padrao Viicio') ?></span>
                 </div>
-                <span class="badge badge-secondary align-self-start">Payload enviado: phone + message</span>
+                <span class="badge badge-secondary align-self-start">Payload enviado: number + body</span>
                 <span class="badge badge-info align-self-start">Modo simulado registra o envio sem chamar API externa</span>
             </div>
         </div>

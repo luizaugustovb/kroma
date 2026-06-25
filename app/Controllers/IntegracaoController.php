@@ -7,6 +7,8 @@ use App\Services\Auth;
 
 class IntegracaoController
 {
+    private const VIICIO_ENDPOINT = 'https://api.viicio.com.br/api/messages/send';
+
     public function index(): void
     {
         AuthMiddleware::requer('integracoes');
@@ -40,7 +42,7 @@ class IntegracaoController
 
         $campos = [
             'token_whatsapp' => trim($_POST['token_whatsapp'] ?? ''),
-            'endpoint_whatsapp' => trim($_POST['endpoint_whatsapp'] ?? ''),
+            'endpoint_whatsapp' => trim($_POST['endpoint_whatsapp'] ?? '') ?: self::VIICIO_ENDPOINT,
             'modo_whatsapp' => in_array($_POST['modo_whatsapp'] ?? 'simulado', ['simulado','producao'], true) ? $_POST['modo_whatsapp'] : 'simulado',
             'webhook_viicio_token' => trim($_POST['webhook_viicio_token'] ?? ''),
             'chave_openai' => trim($_POST['chave_openai'] ?? ''),
@@ -123,6 +125,10 @@ class IntegracaoController
         $payload = file_get_contents('php://input') ?: '';
         $headers = $this->headers();
         $json = json_decode($payload, true);
+        if (!is_array($json)) {
+            parse_str($payload, $formPayload);
+            $json = !empty($formPayload) ? $formPayload : null;
+        }
 
         if ($tokenEsperado !== '' && !hash_equals($tokenEsperado, (string)$tokenRecebido)) {
             $this->registrarWebhook($origem, $payload, $headers, 'ignorado', 'Token inválido.', $json);
@@ -132,10 +138,149 @@ class IntegracaoController
             exit;
         }
 
-        $this->registrarWebhook($origem, $payload, $headers, 'recebido', null, $json);
+        $processamento = $origem === 'viicio' ? $this->processarRespostaOrcamentoViicio($json, $payload) : null;
+        $status = $processamento['status_webhook'] ?? 'recebido';
+        $erro = $processamento['erro'] ?? null;
+
+        $this->registrarWebhook($origem, $payload, $headers, $status, $erro, $json);
         header('Content-Type: application/json');
-        echo json_encode(['status' => 'recebido']);
+        echo json_encode(['status' => $status, 'processamento' => $processamento], JSON_UNESCAPED_UNICODE);
         exit;
+    }
+
+    private function processarRespostaOrcamentoViicio(?array $json, string $payload): ?array
+    {
+        $dados = is_array($json) ? $json : [];
+        $telefone = $this->normalizarTelefone($this->valorWebhook($dados, [
+            'number', 'phone', 'telefone', 'from', 'remoteJid', 'sender', 'contact.phone',
+            'data.number', 'data.phone', 'data.from', 'data.remoteJid', 'message.from',
+        ]));
+        $mensagem = trim($this->valorWebhook($dados, [
+            'body', 'message', 'text', 'mensagem', 'content', 'data.body', 'data.message',
+            'data.text', 'message.body', 'message.text',
+        ]));
+
+        if ($mensagem === '' && $payload !== '') {
+            $mensagem = trim($payload);
+        }
+
+        $intencao = $this->intencaoOrcamento($mensagem);
+        if (!$intencao) {
+            return ['status_webhook' => 'recebido', 'mensagem' => 'Mensagem recebida sem comando de aprovacao ou recusa.'];
+        }
+
+        $orcamento = $this->orcamentoPorResposta($mensagem, $telefone);
+        if (!$orcamento) {
+            return [
+                'status_webhook' => 'erro',
+                'erro' => 'Nenhum orçamento enviado encontrado para a resposta recebida.',
+                'telefone' => $telefone,
+                'intencao' => $intencao,
+            ];
+        }
+
+        try {
+            if ($intencao === 'aprovado') {
+                $ordemId = $this->aprovarOrcamentoPorWebhook($orcamento);
+                return [
+                    'status_webhook' => 'processado',
+                    'acao' => 'orcamento_aprovado',
+                    'orcamento_id' => (int)$orcamento['id'],
+                    'codigo' => $orcamento['codigo'],
+                    'ordem_servico_id' => $ordemId,
+                ];
+            }
+
+            $this->recusarOrcamentoPorWebhook($orcamento);
+            return [
+                'status_webhook' => 'processado',
+                'acao' => 'orcamento_recusado',
+                'orcamento_id' => (int)$orcamento['id'],
+                'codigo' => $orcamento['codigo'],
+            ];
+        } catch (\Exception $e) {
+            return [
+                'status_webhook' => 'erro',
+                'erro' => $e->getMessage(),
+                'orcamento_id' => (int)$orcamento['id'],
+                'codigo' => $orcamento['codigo'],
+            ];
+        }
+    }
+
+    private function valorWebhook(array $dados, array $caminhos): string
+    {
+        foreach ($caminhos as $caminho) {
+            $valor = $dados;
+            foreach (explode('.', $caminho) as $parte) {
+                if (!is_array($valor) || !array_key_exists($parte, $valor)) {
+                    $valor = null;
+                    break;
+                }
+                $valor = $valor[$parte];
+            }
+            if (is_scalar($valor) && trim((string)$valor) !== '') {
+                return (string)$valor;
+            }
+        }
+        return '';
+    }
+
+    private function intencaoOrcamento(string $mensagem): ?string
+    {
+        $texto = strtolower($this->semAcento($mensagem));
+        if (preg_match('/\b(recusado|recuso|reprovado|reprovo|nao aprovo|nao aprovado|nao|cancelar|cancela)\b/u', $texto)) {
+            return 'recusado';
+        }
+        if (preg_match('/\b(aprovado|aprovo|aprovada|aceito|aceita|sim|ok|fechado|pode fazer|autorizo)\b/u', $texto)) {
+            return 'aprovado';
+        }
+        return null;
+    }
+
+    private function semAcento(string $texto): string
+    {
+        $convertido = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+        return $convertido !== false ? $convertido : $texto;
+    }
+
+    private function orcamentoPorResposta(string $mensagem, string $telefone): ?array
+    {
+        if (preg_match('/\bORC-\d{6}-\d{4}\b/i', $mensagem, $match)) {
+            $stmt = db()->prepare(
+                "SELECT o.*, c.nome AS cliente_nome, c.whatsapp AS cliente_whatsapp, c.telefone AS cliente_telefone
+                 FROM orcamentos o
+                 LEFT JOIN clientes c ON c.id = o.cliente_id
+                 WHERE o.codigo = ?
+                 ORDER BY o.id DESC
+                 LIMIT 1"
+            );
+            $stmt->execute([strtoupper($match[0])]);
+            $orcamento = $stmt->fetch();
+            if ($orcamento) {
+                return $orcamento;
+            }
+        }
+
+        if ($telefone === '') {
+            return null;
+        }
+
+        $stmt = db()->query(
+            "SELECT o.*, c.nome AS cliente_nome, c.whatsapp AS cliente_whatsapp, c.telefone AS cliente_telefone
+             FROM orcamentos o
+             JOIN clientes c ON c.id = o.cliente_id
+             WHERE o.status = 'enviado'
+             ORDER BY o.updated_at DESC, o.created_at DESC
+             LIMIT 80"
+        );
+        foreach ($stmt->fetchAll() as $orcamento) {
+            $clienteTelefone = $this->normalizarTelefone($orcamento['cliente_whatsapp'] ?: ($orcamento['cliente_telefone'] ?? ''));
+            if ($clienteTelefone !== '' && $clienteTelefone === $telefone) {
+                return $orcamento;
+            }
+        }
+        return null;
     }
 
     private function testarViicio(?array $empresa): array
@@ -143,18 +288,28 @@ class IntegracaoController
         if (($empresa['modo_whatsapp'] ?? 'simulado') !== 'producao') {
             return ['ok' => true, 'simulado' => true, 'mensagem' => 'Viicio está em modo simulado. HTTP externo não foi chamado.'];
         }
-        if (empty($empresa['endpoint_whatsapp']) || empty($empresa['token_whatsapp'])) {
-            return ['ok' => false, 'mensagem' => 'Configure endpoint e token do Viicio antes do teste.'];
+        if (empty($empresa['token_whatsapp'])) {
+            return ['ok' => false, 'mensagem' => 'Configure o token do Viicio antes do teste.'];
         }
 
-        $res = $this->http('GET', $empresa['endpoint_whatsapp'], null, [
+        $numeroTeste = $this->normalizarTelefone($empresa['whatsapp'] ?? ($empresa['telefone'] ?? ''));
+        if ($numeroTeste === '') {
+            return ['ok' => false, 'mensagem' => 'Configure o WhatsApp da empresa para enviar a mensagem de teste Viicio.'];
+        }
+
+        $endpoint = trim($empresa['endpoint_whatsapp'] ?? '') ?: self::VIICIO_ENDPOINT;
+        $res = $this->http('POST', $endpoint, [
+            'number' => $numeroTeste,
+            'body' => 'Teste de integracao Kroma ERP via Viicio.',
+        ], [
+            'Content-Type: application/json',
             'Authorization: Bearer ' . $empresa['token_whatsapp'],
             'Accept: application/json',
         ]);
 
         return [
-            'ok' => $res['http_status'] >= 200 && $res['http_status'] < 500,
-            'mensagem' => 'Teste HTTP Viicio retornou HTTP ' . ($res['http_status'] ?: 0) . '.',
+            'ok' => $res['http_status'] >= 200 && $res['http_status'] < 300,
+            'mensagem' => 'Teste HTTP Viicio enviou POST e retornou HTTP ' . ($res['http_status'] ?: 0) . '.',
             'retorno' => $res,
         ];
     }
@@ -220,6 +375,340 @@ class IntegracaoController
         ];
     }
 
+    private function normalizarTelefone(string $telefone): string
+    {
+        $digits = preg_replace('/\D/', '', $telefone);
+        if ($digits === '') {
+            return '';
+        }
+        if (str_starts_with($digits, '55')) {
+            return $digits;
+        }
+        if (strlen($digits) >= 10 && strlen($digits) <= 11) {
+            return '55' . $digits;
+        }
+        return $digits;
+    }
+
+    private function aprovarOrcamentoPorWebhook(array $orcamento): int
+    {
+        if ($orcamento['status'] === 'recusado') {
+            throw new \Exception('Orcamento ja esta recusado.');
+        }
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE orcamentos SET status = 'aprovado', aprovado_at = COALESCE(aprovado_at, NOW()), updated_at = NOW() WHERE id = ?")
+                ->execute([$orcamento['id']]);
+
+            if (!empty($orcamento['lead_id'])) {
+                $pdo->prepare("UPDATE leads SET estagio = 'aprovado', updated_at = NOW() WHERE id = ?")
+                    ->execute([$orcamento['lead_id']]);
+            }
+
+            $this->gerarComissaoWebhook($orcamento);
+            $ordemId = $this->criarOrdemServicoWebhook($orcamento);
+            $this->gerarContaReceberWebhook($orcamento, $ordemId);
+
+            Auth::registrarAuditoria('orcamentos', 'aprovar_viicio', (int)$orcamento['id'], null, [
+                'codigo' => $orcamento['codigo'],
+                'origem' => 'webhook_viicio',
+            ]);
+            $pdo->commit();
+            return $ordemId;
+        } catch (\Exception $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    private function recusarOrcamentoPorWebhook(array $orcamento): void
+    {
+        if ($orcamento['status'] === 'aprovado') {
+            throw new \Exception('Orcamento ja esta aprovado.');
+        }
+
+        db()->prepare("UPDATE orcamentos SET status = 'recusado', updated_at = NOW() WHERE id = ?")
+            ->execute([$orcamento['id']]);
+
+        if (!empty($orcamento['lead_id'])) {
+            db()->prepare("UPDATE leads SET estagio = 'perdido', updated_at = NOW() WHERE id = ?")
+                ->execute([$orcamento['lead_id']]);
+        }
+
+        Auth::registrarAuditoria('orcamentos', 'recusar_viicio', (int)$orcamento['id'], null, [
+            'codigo' => $orcamento['codigo'],
+            'origem' => 'webhook_viicio',
+        ]);
+    }
+
+    private function gerarComissaoWebhook(array $orcamento): void
+    {
+        db()->prepare("DELETE FROM comissoes WHERE orcamento_id = ?")->execute([$orcamento['id']]);
+        $base = (float)$orcamento['total'];
+        $percentual = (float)$orcamento['comissao_percent'];
+        $valor = round($base * ($percentual / 100), 2);
+        $margemReal = $base > 0 ? (((float)$orcamento['lucro_previsto'] / $base) * 100) : 0;
+        $status = $margemReal < $this->margemMinima() ? 'bloqueada' : 'prevista';
+        $observacao = $status === 'bloqueada'
+            ? 'Comissao bloqueada: margem abaixo do minimo configurado.'
+            : 'Comissao gerada na aprovacao via webhook Viicio.';
+
+        db()->prepare(
+            "INSERT INTO comissoes (orcamento_id, usuario_id, base_calculo, percentual, valor, status, observacoes, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())"
+        )->execute([$orcamento['id'], $orcamento['vendedor_id'], $base, $percentual, $valor, $status, $observacao]);
+    }
+
+    private function criarOrdemServicoWebhook(array $orcamento): int
+    {
+        $existente = $this->ordemDoOrcamentoWebhook((int)$orcamento['id']);
+        if ($existente) {
+            return (int)$existente['id'];
+        }
+
+        $codigo = $this->gerarCodigoWebhook('OS', 'ordem_servicos');
+        db()->prepare(
+            "INSERT INTO ordem_servicos
+             (codigo, orcamento_id, cliente_id, responsavel_id, titulo, descricao, prioridade, status, data_entrada, data_prometida, observacoes, created_at)
+             VALUES (?, ?, ?, NULL, ?, ?, 'media', 'aberta', ?, ?, ?, NOW())"
+        )->execute([
+            $codigo,
+            $orcamento['id'],
+            $orcamento['cliente_id'],
+            'OS - ' . $orcamento['titulo'],
+            $orcamento['descricao'] ?? '',
+            date('Y-m-d'),
+            $this->prazoParaDataWebhook($orcamento['prazo_entrega'] ?? ''),
+            'Gerada automaticamente pela aprovacao do cliente via Viicio no orcamento ' . $orcamento['codigo'] . '.',
+        ]);
+        $ordemId = (int)db()->lastInsertId();
+
+        $itens = $this->itensOrcamentoWebhook((int)$orcamento['id']);
+        $itemStmt = db()->prepare(
+            "INSERT INTO ordem_servico_itens
+             (ordem_servico_id, produto_id, orcamento_item_id, produto_nome, descricao, quantidade, unidade, largura, altura, area_m2, material, acabamento, arquivo_ref, status, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', 'pendente', NOW())"
+        );
+
+        foreach ($itens as $item) {
+            $materiais = $this->materiaisDoItemWebhook((int)$item['id']);
+            $materialResumo = implode(', ', array_map(fn($m) => $m['material_nome'], $materiais));
+            $itemStmt->execute([
+                $ordemId,
+                $item['produto_id'] ?: null,
+                $item['id'],
+                $item['produto_nome'],
+                $item['descricao'],
+                $item['quantidade'],
+                $item['unidade'],
+                $item['largura'],
+                $item['altura'],
+                $item['area_m2'],
+                $materialResumo,
+                '',
+            ]);
+        }
+
+        $this->salvarEtapasOsWebhook($ordemId, $itens, $this->prazoParaDataWebhook($orcamento['prazo_entrega'] ?? ''));
+        $this->reservarMateriaisWebhook($ordemId, (int)$orcamento['id'], $codigo);
+
+        return $ordemId;
+    }
+
+    private function gerarContaReceberWebhook(array $orcamento, int $ordemId): void
+    {
+        if ((float)$orcamento['total'] <= 0 || $this->contaReceberDoOrcamentoWebhook((int)$orcamento['id'])) {
+            return;
+        }
+
+        db()->prepare(
+            "INSERT INTO contas_receber
+             (codigo, cliente_id, orcamento_id, ordem_servico_id, descricao, origem, valor, valor_pago, vencimento, status, observacoes, created_at)
+             VALUES (?, ?, ?, ?, ?, 'orcamento', ?, 0, ?, 'aberto', ?, NOW())"
+        )->execute([
+            $this->gerarCodigoWebhook('REC', 'contas_receber'),
+            $orcamento['cliente_id'],
+            $orcamento['id'],
+            $ordemId,
+            'Recebimento ' . $orcamento['codigo'] . ' - ' . $orcamento['titulo'],
+            $orcamento['total'],
+            date('Y-m-d', strtotime('+7 days')),
+            'Conta gerada automaticamente pela aprovacao via webhook Viicio.',
+        ]);
+    }
+
+    private function salvarEtapasOsWebhook(int $ordemId, array $itens, ?string $dataPrometida): void
+    {
+        $produtoIds = array_filter(array_unique(array_column($itens, 'produto_id')));
+        $processos = [];
+        if ($produtoIds) {
+            $placeholders = implode(',', array_fill(0, count($produtoIds), '?'));
+            $stmt = db()->prepare(
+                "SELECT DISTINCT pr.*
+                 FROM produto_processos pp
+                 JOIN processos_produtivos pr ON pr.id = pp.processo_id
+                 WHERE pp.produto_id IN ($placeholders) AND pr.ativo = 1
+                 ORDER BY pp.ordem, pr.nome"
+            );
+            $stmt->execute(array_values($produtoIds));
+            $processos = $stmt->fetchAll();
+        }
+        if (!$processos) {
+            $processos = [['id' => null, 'nome' => 'Producao', 'setor' => 'Producao', 'checklist' => null]];
+        }
+
+        $stmt = db()->prepare(
+            "INSERT INTO ordem_servico_etapas
+             (ordem_servico_id, processo_id, nome, setor, ordem, status, prazo, checklist, created_at)
+             VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?, NOW())"
+        );
+        $prazo = $dataPrometida ? $dataPrometida . ' 18:00:00' : null;
+        $ordem = 1;
+        foreach ($processos as $processo) {
+            $stmt->execute([
+                $ordemId,
+                $processo['id'] ?? null,
+                $processo['nome'],
+                $processo['setor'] ?? 'Producao',
+                $ordem++,
+                $prazo,
+                $processo['checklist'] ?? null,
+            ]);
+        }
+    }
+
+    private function reservarMateriaisWebhook(int $ordemId, int $orcamentoId, string $codigoOs): void
+    {
+        $materiais = $this->queryPreparadaWebhook(
+            "SELECT oim.*, m.nome AS material_nome
+             FROM orcamento_item_materiais oim
+             JOIN orcamento_itens oi ON oi.id = oim.orcamento_item_id
+             JOIN materiais m ON m.id = oim.material_id
+             WHERE oi.orcamento_id = ?",
+            [$orcamentoId]
+        );
+
+        foreach ($materiais as $item) {
+            $stmt = db()->prepare("SELECT * FROM materiais WHERE id = ? FOR UPDATE");
+            $stmt->execute([$item['material_id']]);
+            $material = $stmt->fetch();
+            if (!$material) {
+                continue;
+            }
+
+            $quantidade = (float)$item['quantidade'];
+            $saldoAnterior = (float)$material['estoque_atual'];
+            $reservadoAnterior = (float)$material['estoque_reservado'];
+            $reservadoPosterior = $reservadoAnterior + $quantidade;
+            if ($reservadoPosterior > $saldoAnterior) {
+                throw new \Exception('Estoque insuficiente para reservar ' . $material['nome'] . '.');
+            }
+
+            db()->prepare("UPDATE materiais SET estoque_reservado = ?, updated_at = NOW() WHERE id = ?")
+                ->execute([$reservadoPosterior, $item['material_id']]);
+            db()->prepare(
+                "INSERT INTO estoque_movimentacoes
+                 (material_id, ordem_servico_id, usuario_id, tipo, origem, quantidade, custo_unitario, saldo_anterior, saldo_posterior, reservado_anterior, reservado_posterior, observacao, created_at)
+                 VALUES (?, ?, NULL, 'reserva', ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+            )->execute([
+                $item['material_id'],
+                $ordemId,
+                'OS ' . $codigoOs,
+                $quantidade,
+                $item['custo_unitario'],
+                $saldoAnterior,
+                $saldoAnterior,
+                $reservadoAnterior,
+                $reservadoPosterior,
+                'Reserva automatica do orcamento aprovado via Viicio.',
+            ]);
+        }
+    }
+
+    private function itensOrcamentoWebhook(int $orcamentoId): array
+    {
+        return $this->queryPreparadaWebhook(
+            "SELECT oi.*, p.codigo AS produto_codigo
+             FROM orcamento_itens oi
+             LEFT JOIN produtos p ON p.id = oi.produto_id
+             WHERE oi.orcamento_id = ?
+             ORDER BY oi.id",
+            [$orcamentoId]
+        );
+    }
+
+    private function materiaisDoItemWebhook(int $itemId): array
+    {
+        return $this->queryPreparadaWebhook(
+            "SELECT oim.*, m.nome AS material_nome, m.codigo AS material_codigo
+             FROM orcamento_item_materiais oim
+             JOIN materiais m ON m.id = oim.material_id
+             WHERE oim.orcamento_item_id = ?
+             ORDER BY m.nome",
+            [$itemId]
+        );
+    }
+
+    private function ordemDoOrcamentoWebhook(int $orcamentoId): ?array
+    {
+        $stmt = db()->prepare("SELECT * FROM ordem_servicos WHERE orcamento_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$orcamentoId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    private function contaReceberDoOrcamentoWebhook(int $orcamentoId): ?array
+    {
+        $stmt = db()->prepare("SELECT * FROM contas_receber WHERE orcamento_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->execute([$orcamentoId]);
+        return $stmt->fetch() ?: null;
+    }
+
+    private function margemMinima(): float
+    {
+        try {
+            $stmt = db()->prepare("SELECT valor FROM configuracoes WHERE chave = 'margem_minima' LIMIT 1");
+            $stmt->execute();
+            return (float)($stmt->fetchColumn() ?: 30);
+        } catch (\Exception $e) {
+            return 30.0;
+        }
+    }
+
+    private function prazoParaDataWebhook(?string $prazo): ?string
+    {
+        if (!$prazo) {
+            return date('Y-m-d', strtotime('+7 days'));
+        }
+        if (preg_match('/(\d+)/', $prazo, $m)) {
+            return date('Y-m-d', strtotime('+' . (int)$m[1] . ' days'));
+        }
+        return date('Y-m-d', strtotime('+7 days'));
+    }
+
+    private function gerarCodigoWebhook(string $prefixoBase, string $tabela): string
+    {
+        $prefixo = $prefixoBase . '-' . date('Ym') . '-';
+        try {
+            $stmt = db()->prepare("SELECT COUNT(*) FROM $tabela WHERE codigo LIKE ?");
+            $stmt->execute([$prefixo . '%']);
+            $seq = (int)$stmt->fetchColumn() + 1;
+        } catch (\Exception $e) {
+            $seq = 1;
+        }
+        return $prefixo . str_pad((string)$seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    private function queryPreparadaWebhook(string $sql, array $params): array
+    {
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
     private function http(string $method, string $url, ?array $payload = null, array $headers = []): array
     {
         if (!function_exists('curl_init')) {
@@ -253,7 +742,7 @@ class IntegracaoController
     private function statusIntegracoes(?array $empresa): array
     {
         return [
-            'viicio' => $this->statusConfig(!empty($empresa['token_whatsapp']) && !empty($empresa['endpoint_whatsapp']), $empresa['modo_whatsapp'] ?? 'simulado'),
+            'viicio' => $this->statusConfig(!empty($empresa['token_whatsapp']), $empresa['modo_whatsapp'] ?? 'simulado'),
             'openai' => $this->statusConfig(!empty($empresa['chave_openai']), $empresa['modo_ia'] ?? 'simulado'),
             'gemini' => $this->statusConfig(!empty($empresa['chave_gemini']), $empresa['modo_ia'] ?? 'simulado'),
             'asaas' => $this->statusConfig(!empty($empresa['chave_asaas']), $empresa['ambiente_asaas'] ?? 'sandbox'),

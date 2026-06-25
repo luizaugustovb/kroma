@@ -436,6 +436,7 @@ CREATE TABLE IF NOT EXISTS orcamentos (
     lead_id             INT UNSIGNED,
     vendedor_id         INT UNSIGNED,
     tipo                ENUM('rapido','completo','ia','produto','item','setor','revenda','cliente_final') DEFAULT 'rapido',
+    tipo_preco          ENUM('cliente_final','revenda','terceirizado') DEFAULT 'cliente_final',
     status              ENUM('rascunho','em_calculo','enviado','aprovado','recusado','cancelado','expirado') DEFAULT 'rascunho',
     titulo              VARCHAR(200) NOT NULL,
     descricao           TEXT,

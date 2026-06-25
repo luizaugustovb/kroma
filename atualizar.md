@@ -30,6 +30,22 @@ ALTER TABLE ordem_servicos
   ADD COLUMN obs_otimizacao TEXT DEFAULT NULL;
 ```
 
+```sql
+-- Adicionado em 2026-06-24 — tabela de preços por tipo de cliente no produto
+ALTER TABLE produtos
+  ADD COLUMN desc_revenda_percent      DECIMAL(6,2)  DEFAULT 15.00  AFTER preco_base,
+  ADD COLUMN desc_terceirizado_percent DECIMAL(6,2)  DEFAULT 25.00  AFTER desc_revenda_percent,
+  ADD COLUMN preco_cliente_final       DECIMAL(12,2) DEFAULT 0.00   AFTER desc_terceirizado_percent,
+  ADD COLUMN preco_revenda             DECIMAL(12,2) DEFAULT 0.00   AFTER preco_cliente_final,
+  ADD COLUMN preco_terceirizado        DECIMAL(12,2) DEFAULT 0.00   AFTER preco_revenda;
+```
+
+```sql
+-- Adicionado em 2026-06-24 — tabela de preços por tipo de cliente no orçamento
+ALTER TABLE orcamentos
+  ADD COLUMN tipo_preco ENUM('cliente_final','revenda','terceirizado') DEFAULT 'cliente_final' AFTER cliente_id;
+```
+
 ---
 
 ## 🔧 Funcionalidades Pendentes

@@ -82,6 +82,7 @@ $router->get('/clientes/busca', 'ClienteController@busca');
 $router->get('/clientes/:id', 'ClienteController@ver');
 $router->get('/clientes/:id/editar', 'ClienteController@editar');
 $router->post('/clientes/:id/editar', 'ClienteController@atualizar');
+$router->post('/clientes/:id/resetar-senha', 'ClienteController@resetarSenhaPortal');
 $router->post('/clientes/:id/excluir', 'ClienteController@excluir');
 
 // CRM
@@ -153,6 +154,8 @@ $router->get('/estoque/:id', 'EstoqueController@ver');
 $router->get('/estoque/:id/editar', 'EstoqueController@editar');
 $router->post('/estoque/:id/editar', 'EstoqueController@atualizar');
 $router->post('/estoque/:id/movimentar', 'EstoqueController@movimentar');
+$router->post('/estoque/:id/excluir', 'EstoqueController@excluir');
+$router->post('/compras/:id/excluir', 'ComprasController@excluir');
 
 // Financeiro
 $router->get('/financeiro', 'FinanceiroController@index');
@@ -255,3 +258,4 @@ $router->get('/api/clientes', 'ApiController@clientes');
 $router->get('/api/leads', 'ApiController@leads');
 $router->get('/api/dashboard', 'ApiController@dashboard');
 $router->get('/api/notificacoes/count', 'ApiController@notificacoesCount');
+$router->get('/api/produto-materiais/:id', 'ApiController@produtoMateriais');

@@ -74,7 +74,8 @@ class OrcamentoController
     {
         $orcamento = [
             'tipo' => $_GET['tipo'] ?? 'completo',
-            'status' => 'rascunho',
+            'tipo_preco' => 'cliente_final',
+            'status' => 'enviado',
             'validade' => date('Y-m-d', strtotime('+7 days')),
             'vendedor_id' => Auth::id(),
             'margem_percent' => 35,
@@ -330,7 +331,8 @@ class OrcamentoController
             exit;
         }
 
-        if ($id && !$this->buscar($id)) {
+        $orcamentoAnterior = $id ? $this->buscar($id) : null;
+        if ($id && !$orcamentoAnterior) {
             $_SESSION['flash_error'] = 'Orçamento não encontrado ou sem permissão.';
             header('Location: ' . APP_URL . '/orcamentos');
             exit;
@@ -385,7 +387,26 @@ class OrcamentoController
             Auth::registrarAuditoria('orcamentos', $acao, $orcamentoId);
             $pdo->commit();
 
-            $_SESSION['flash_success'] = $id ? 'Orçamento atualizado.' : 'Orçamento criado.';
+            $notificacao = null;
+            $deveNotificar = ($dados['status'] ?? '') === 'enviado'
+                && (!$id || (($orcamentoAnterior['status'] ?? '') !== 'enviado'));
+            if ($deveNotificar) {
+                $notificacao = $this->notificarOrcamentoEnviado($orcamentoId);
+            }
+
+            $mensagemSucesso = $id ? 'Orçamento atualizado.' : 'Orçamento criado.';
+            if ($notificacao !== null) {
+                $statusWhats = $notificacao['status'] ?? 'erro';
+                if (in_array($statusWhats, ['enviado', 'simulado'], true)) {
+                    $_SESSION['flash_success'] = $mensagemSucesso . ($statusWhats === 'simulado'
+                        ? ' WhatsApp registrado em modo simulado.'
+                        : ' WhatsApp enviado ao cliente.');
+                } else {
+                    $_SESSION['flash_warning'] = $mensagemSucesso . ' WhatsApp não enviado: ' . ($notificacao['erro'] ?? 'verifique o histórico de envios.');
+                }
+            } else {
+                $_SESSION['flash_success'] = $mensagemSucesso;
+            }
             header('Location: ' . APP_URL . '/orcamentos/' . $orcamentoId);
         } catch (\Exception $e) {
             if (isset($pdo) && $pdo->inTransaction()) {
@@ -410,10 +431,21 @@ class OrcamentoController
 
             // Notificar cliente via WhatsApp ao enviar orçamento
             if ($status === 'enviado') {
-                $this->notificarOrcamentoEnviado((int)$id);
+                $notificacao = $this->notificarOrcamentoEnviado((int)$id);
             }
 
-            $_SESSION['flash_success'] = $mensagem;
+            if (($notificacao ?? null) !== null) {
+                $statusWhats = $notificacao['status'] ?? 'erro';
+                if (in_array($statusWhats, ['enviado', 'simulado'], true)) {
+                    $_SESSION['flash_success'] = $mensagem . ($statusWhats === 'simulado'
+                        ? ' WhatsApp registrado em modo simulado.'
+                        : ' WhatsApp enviado ao cliente.');
+                } else {
+                    $_SESSION['flash_warning'] = $mensagem . ' WhatsApp não enviado: ' . ($notificacao['erro'] ?? 'verifique o histórico de envios.');
+                }
+            } else {
+                $_SESSION['flash_success'] = $mensagem;
+            }
         } catch (\Exception $e) {
             $_SESSION['flash_error'] = 'Erro ao alterar status.';
         }
@@ -422,7 +454,7 @@ class OrcamentoController
         exit;
     }
 
-    private function notificarOrcamentoEnviado(int $id): void
+    private function notificarOrcamentoEnviado(int $id): array
     {
         try {
             $orc = db()->prepare(
@@ -434,16 +466,23 @@ class OrcamentoController
             $orc->execute([$id]);
             $dados = $orc->fetch();
 
-            if (!$dados || empty($dados['cliente_whatsapp'])) return;
+            if (!$dados) {
+                return ['status' => 'erro', 'erro' => 'Orçamento não encontrado.'];
+            }
+
+            if (empty($dados['cliente_whatsapp'])) {
+                return ['status' => 'erro', 'erro' => 'cliente sem WhatsApp cadastrado.'];
+            }
 
             $portalUrl = APP_URL . '/portal';
             $msg = "Olá, *{$dados['cliente_nome']}*!\n\n"
                 . "Seu orçamento *{$dados['codigo']}* — _{$dados['titulo']}_ foi enviado para sua aprovação.\n\n"
                 . "Acesse o portal para visualizar e aprovar:\n{$portalUrl}\n\n"
+                . "Se preferir, responda por aqui: *APROVADO {$dados['codigo']}* ou *RECUSADO {$dados['codigo']}*.\n\n"
                 . "Qualquer dúvida, estamos à disposição!";
 
             $wpp = new \App\Services\WhatsAppService();
-            $wpp->enviar([
+            return $wpp->enviar([
                 'telefone' => $dados['cliente_whatsapp'],
                 'mensagem' => $msg,
                 'tipo' => 'orcamento',
@@ -451,7 +490,7 @@ class OrcamentoController
                 'cliente_id' => $dados['cid'],
             ]);
         } catch (\Exception $e) {
-            // Não bloquear o fluxo principal por falha de WhatsApp
+            return ['status' => 'erro', 'erro' => $e->getMessage()];
         }
     }
 
@@ -480,6 +519,9 @@ class OrcamentoController
             'margem_percent' => $this->numero($_POST['margem_percent'] ?? 0),
             'desconto_percent' => $this->numero($_POST['desconto_percent'] ?? 0),
             'desconto_valor' => $this->numero($_POST['desconto_valor'] ?? 0),
+            'tipo_preco' => Auth::temPerfil(['administrador', 'diretor', 'gerente'])
+                ? (in_array($_POST['tipo_preco'] ?? '', ['cliente_final', 'revenda', 'terceirizado'], true) ? $_POST['tipo_preco'] : 'cliente_final')
+                : 'cliente_final',
         ];
     }
 
@@ -531,14 +573,30 @@ class OrcamentoController
             ];
 
             $item['area_m2'] = $item['largura'] > 0 && $item['altura'] > 0 ? round($item['largura'] * $item['altura'] * $item['quantidade'], 3) : 0;
+            $areaUnit = ($item['largura'] > 0 && $item['altura'] > 0) ? ($item['largura'] * $item['altura']) : 1;
             $custoUnitario = $item['custo_material'] + $item['custo_tinta'] + $item['custo_acabamento'] + $item['custo_mao_obra'] + $item['custo_maquina'] + $item['custo_terceiros'];
             $custoComDesperdicio = $custoUnitario * (1 + ($item['desperdicio_percent'] / 100));
-            $item['custo_total'] = round($custoComDesperdicio * $item['quantidade'], 2);
             $multiplicadorVenda = 1 + (($item['margem_percent'] + $item['impostos_percent'] + $item['comissao_percent']) / 100);
             $precoUnitario = $custoComDesperdicio * $multiplicadorVenda;
             $precoUnitario = $precoUnitario * (1 - ($item['desconto_percent'] / 100));
             $item['preco_unitario'] = round($precoUnitario, 2);
-            $item['total'] = round($item['preco_unitario'] * $item['quantidade'], 2);
+            if ($item['tipo_item'] === 'personalizado') {
+                $item['custo_total'] = round($custoComDesperdicio * $item['quantidade'] * $areaUnit, 2);
+                $item['total'] = round($precoUnitario * $item['quantidade'] * $areaUnit, 2);
+            } else {
+                $item['custo_total'] = round($custoComDesperdicio * $item['quantidade'], 2);
+                $item['total'] = round($item['preco_unitario'] * $item['quantidade'], 2);
+            }
+
+            if (isset($_POST['item_preco_unitario'][$i])) {
+                $precoUnitarioDireto = $this->numero($_POST['item_preco_unitario'][$i]);
+                if ($precoUnitarioDireto > 0) {
+                    $item['preco_unitario'] = round($precoUnitarioDireto * (1 - ($item['desconto_percent'] / 100)), 2);
+                    $item['total'] = $item['tipo_item'] === 'personalizado'
+                        ? round($item['preco_unitario'] * $item['quantidade'] * $areaUnit, 2)
+                        : round($item['preco_unitario'] * $item['quantidade'], 2);
+                }
+            }
             $itens[] = $item;
         }
 
@@ -949,7 +1007,7 @@ class OrcamentoController
     private function contextoFormulario(): array
     {
         return [
-            'clientes' => $this->query("SELECT id, nome FROM clientes WHERE status = 'ativo' ORDER BY nome LIMIT 500"),
+            'clientes' => $this->query("SELECT id, nome, tipo_cliente FROM clientes WHERE status = 'ativo' ORDER BY nome LIMIT 500"),
             'leads' => $this->query("SELECT id, cliente_id, nome, empresa, produto_interesse, descricao FROM leads ORDER BY created_at DESC LIMIT 500"),
             'vendedores' => $this->query("SELECT id, nome FROM usuarios WHERE ativo = 1 ORDER BY nome"),
             'designers' => $this->designers(),

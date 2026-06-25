@@ -192,6 +192,8 @@ class ClienteController
             $leads = [];
         }
 
+        $usuarioPortal = $this->usuarioPortalCliente($cliente);
+
         $titulo      = htmlspecialchars($cliente['nome']);
         $subtitulo   = 'Ficha do Cliente';
         $breadcrumbs = [['label' => 'Clientes', 'url' => '/clientes'], ['label' => $cliente['nome'], 'url' => '']];
@@ -204,6 +206,79 @@ class ClienteController
         require APP_PATH . '/Views/clientes/show.php';
         $content = ob_get_clean();
         require APP_PATH . '/Views/layouts/main.php';
+    }
+
+    public function resetarSenhaPortal(string $id): void
+    {
+        AuthMiddleware::requerPerfil(['administrador', 'diretor', 'gerente']);
+
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token invÃ¡lido.';
+            header('Location: ' . APP_URL . '/clientes/' . $id);
+            exit;
+        }
+
+        $cliente = $this->buscarPorId($id);
+        if (!$cliente) {
+            $_SESSION['flash_error'] = 'Cliente nÃ£o encontrado.';
+            header('Location: ' . APP_URL . '/clientes');
+            exit;
+        }
+
+        if (empty($cliente['email'])) {
+            $_SESSION['flash_warning'] = 'Informe um e-mail no cadastro do cliente para criar ou resetar o acesso ao portal.';
+            header('Location: ' . APP_URL . '/clientes/' . $id . '/editar');
+            exit;
+        }
+
+        try {
+            $perfil = $this->perfilCliente();
+            if (!$perfil) {
+                throw new \Exception('Perfil de cliente nÃ£o encontrado.');
+            }
+
+            $usuario = $this->usuarioPortalCliente($cliente);
+            if ($usuario && empty($usuario['cliente_id']) && ($usuario['perfil_nome'] ?? '') !== 'cliente') {
+                throw new \Exception('O e-mail do cliente pertence a um usuÃ¡rio interno. Use outro e-mail para o portal.');
+            }
+
+            $senha = $this->gerarSenhaPortal();
+            $senhaHash = password_hash($senha, PASSWORD_BCRYPT, ['cost' => 12]);
+
+            if ($usuario) {
+                db()->prepare(
+                    "UPDATE usuarios
+                     SET nome = ?, email = ?, senha = ?, perfil_id = ?, cliente_id = ?, ativo = 1, primeiro_acesso = 1, updated_at = NOW()
+                     WHERE id = ?"
+                )->execute([$cliente['nome'], $cliente['email'], $senhaHash, $perfil['id'], $id, $usuario['id']]);
+                $usuarioId = (int)$usuario['id'];
+                $acao = 'resetar_senha_cliente';
+            } else {
+                db()->prepare(
+                    "INSERT INTO usuarios (nome, email, senha, perfil_id, cliente_id, ativo, primeiro_acesso, created_at)
+                     VALUES (?, ?, ?, ?, ?, 1, 1, NOW())"
+                )->execute([$cliente['nome'], $cliente['email'], $senhaHash, $perfil['id'], $id]);
+                $usuarioId = (int)db()->lastInsertId();
+                $acao = 'criar_acesso_cliente';
+            }
+
+            $notificado = $this->enviarSenhaResetada($cliente, $cliente['email'], $senha);
+            Auth::registrarAuditoria('clientes', $acao, (int)$id, null, [
+                'usuario_id' => $usuarioId,
+                'email' => $cliente['email'],
+                'notificado_whatsapp' => $notificado,
+            ]);
+
+            $mensagem = 'Acesso do cliente atualizado. Login: ' . $cliente['email'] . ' | Senha: ' . $senha;
+            $_SESSION[$notificado ? 'flash_success' : 'flash_warning'] = $notificado
+                ? $mensagem . ' | WhatsApp enviado ao cliente.'
+                : $mensagem . ' | Cliente sem WhatsApp, repasse manualmente.';
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'Erro ao resetar acesso do cliente: ' . $e->getMessage();
+        }
+
+        header('Location: ' . APP_URL . '/clientes/' . $id);
+        exit;
     }
 
     public function editar(string $id): void
@@ -349,6 +424,84 @@ class ClienteController
             'observacoes'       => trim($_POST['observacoes'] ?? ''),
             'observacoes_internas' => trim($_POST['observacoes_internas'] ?? ''),
         ];
+    }
+
+    private function usuarioPortalCliente(array $cliente): ?array
+    {
+        try {
+            $email = trim(strtolower($cliente['email'] ?? ''));
+            if ($email === '') {
+                $stmt = db()->prepare(
+                    "SELECT u.*, p.nome AS perfil_nome
+                     FROM usuarios u
+                     JOIN perfis p ON p.id = u.perfil_id
+                     WHERE u.cliente_id = ?
+                     ORDER BY u.id DESC
+                     LIMIT 1"
+                );
+                $stmt->execute([$cliente['id']]);
+            } else {
+                $stmt = db()->prepare(
+                    "SELECT u.*, p.nome AS perfil_nome
+                     FROM usuarios u
+                     JOIN perfis p ON p.id = u.perfil_id
+                     WHERE u.cliente_id = ? OR LOWER(u.email) = ?
+                     ORDER BY (u.cliente_id = ?) DESC, u.id DESC
+                     LIMIT 1"
+                );
+                $stmt->execute([$cliente['id'], $email, $cliente['id']]);
+            }
+            return $stmt->fetch() ?: null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function perfilCliente(): ?array
+    {
+        try {
+            $perfil = db()->query("SELECT id FROM perfis WHERE nome = 'cliente' LIMIT 1")->fetch();
+            return $perfil ?: null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function gerarSenhaPortal(): string
+    {
+        return substr(bin2hex(random_bytes(5)), 0, 8);
+    }
+
+    private function enviarSenhaResetada(array $cliente, string $email, string $senha): bool
+    {
+        if (empty($cliente['whatsapp'])) {
+            return false;
+        }
+
+        try {
+            $empresa = db()->query("SELECT nome_fantasia, razao_social FROM empresas LIMIT 1")->fetch();
+            $nomeEmpresa = $empresa['nome_fantasia'] ?? $empresa['razao_social'] ?? APP_NAME;
+            $loginUrl = APP_URL . '/login';
+            $msg = "Ola, *{$cliente['nome']}*!\n\n"
+                . "Sua senha do portal do cliente da *{$nomeEmpresa}* foi resetada.\n\n"
+                . "*Acesso:* {$loginUrl}\n"
+                . "*Usuario:* {$email}\n"
+                . "*Senha:* {$senha}\n\n"
+                . "Recomendamos alterar sua senha no primeiro acesso.";
+
+            $wpp = new \App\Services\WhatsAppService();
+            $resultado = $wpp->enviar([
+                'telefone' => $cliente['whatsapp'],
+                'mensagem' => $msg,
+                'tipo' => 'sistema',
+                'origem' => 'Reset senha portal cliente',
+                'cliente_id' => (int)$cliente['id'],
+            ]);
+
+            return in_array($resultado['status'] ?? '', ['enviado', 'simulado'], true);
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function getVendedores(): array

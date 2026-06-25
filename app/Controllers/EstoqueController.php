@@ -135,6 +135,61 @@ class EstoqueController
         $this->salvar($id);
     }
 
+    public function excluir(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        if (!Auth::temPerfil('administrador')) {
+            $_SESSION['flash_error'] = 'Apenas administradores podem excluir materiais.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        $material = $this->buscar($id);
+        if (!$material) {
+            $_SESSION['flash_error'] = 'Material não encontrado.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        if ((float)$material['estoque_reservado'] > 0) {
+            $_SESSION['flash_error'] = 'Não é possível excluir: material possui estoque reservado em ordens abertas.';
+            header('Location: ' . APP_URL . '/estoque');
+            exit;
+        }
+
+        try {
+            if ($material['status'] === 'inativo') {
+                // Segunda fase: exclusão permanente
+                $em_compras = db()->prepare("SELECT COUNT(*) FROM compra_itens WHERE material_id = ?")->execute([$id]);
+                $stmt = db()->prepare("SELECT COUNT(*) FROM compra_itens WHERE material_id = ?");
+                $stmt->execute([$id]);
+                if ((int)$stmt->fetchColumn() > 0) {
+                    $_SESSION['flash_error'] = 'Não é possível excluir: material está vinculado a ordens de compra.';
+                    header('Location: ' . APP_URL . '/estoque');
+                    exit;
+                }
+                db()->prepare("DELETE FROM materiais WHERE id = ?")->execute([$id]);
+                Auth::registrarAuditoria('materiais', 'excluir_permanente', (int)$id);
+                $_SESSION['flash_success'] = 'Material excluído permanentemente.';
+            } else {
+                // Primeira fase: inativar
+                db()->prepare("UPDATE materiais SET status = 'inativo', updated_at = NOW() WHERE id = ?")->execute([$id]);
+                Auth::registrarAuditoria('materiais', 'inativar', (int)$id);
+                $_SESSION['flash_success'] = 'Material inativado. Para excluir permanentemente, clique em excluir novamente.';
+            }
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = 'Erro ao excluir material.';
+        }
+
+        header('Location: ' . APP_URL . '/estoque');
+        exit;
+    }
+
     public function movimentar(string $id): void
     {
         if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {

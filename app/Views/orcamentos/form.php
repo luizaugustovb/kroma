@@ -4,6 +4,7 @@ use App\Services\Auth;
 
 $csrfToken = Auth::csrfToken();
 $isEdicao = !empty($orcamento['id']);
+$isGestor = Auth::temPerfil(['administrador', 'diretor', 'gerente']);
 $action = $isEdicao ? APP_URL . '/orcamentos/' . $orcamento['id'] . '/editar' : APP_URL . '/orcamentos/novo';
 
 function orcMoney($value): string
@@ -39,6 +40,9 @@ function orcProdutoOptions(array $produtos, $selected = null): string
             'data-margem' => $produto['margem_percent'] ?? 35,
             'data-impostos' => $produto['impostos_percent'] ?? 8,
             'data-comissao' => $produto['comissao_percent'] ?? 5,
+            'data-preco-cliente-final' => $produto['preco_cliente_final'] ?? 0,
+            'data-preco-revenda' => $produto['preco_revenda'] ?? 0,
+            'data-preco-terceirizado' => $produto['preco_terceirizado'] ?? 0,
             'data-estoque' => $estoque,
         ];
         $html .= '<option value="' . htmlspecialchars((string)$produto['id']) . '"' . $sel;
@@ -124,7 +128,7 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                 </div>
                 <div class="col-12">
                     <span class="badge badge-info me-2" data-estoque-badge>Estoque: --</span>
-                    <span class="badge badge-secondary" data-item-dims>Dimensão: --</span>
+                    <span class="badge badge-secondary" data-item-dims>Dimensão: --</span> <span class="badge badge-secondary ms-1" data-bom-badge>Materiais: --</span>
                 </div>
             </div>
         </div>
@@ -133,10 +137,12 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
         <div class="item-secao-personalizado" <?= $tipoItem === 'pronto' ? 'style="display:none"' : '' ?>>
             <div class="row g-2 mb-2">
                 <div class="col-md-5">
-                    <!-- campo produto_id oculto (sem produto) para personalizado -->
-                    <input type="hidden" name="item_produto_id[]" value="">
+                    <input type="hidden" name="item_produto_id[]" class="pers-produto-id" value="<?= htmlspecialchars($item['produto_id'] ?? '') ?>">
                     <label class="form-label fw-bold">Produto/Serviço *</label>
-                    <input class="form-control item-input" name="item_produto_nome[]" required value="<?= htmlspecialchars($item['produto_nome'] ?? '') ?>" placeholder="Banner, ACM, Adesivo, DTF...">
+                    <select class="form-select item-input mb-1" data-catalogo-select>
+                        <?= orcProdutoOptions($contexto['produtos'], $item['produto_id'] ?? null) ?>
+                    </select>
+                    <input class="form-control item-input mt-1" name="item_produto_nome[]" required value="<?= htmlspecialchars($item['produto_nome'] ?? '') ?>" placeholder="Ou descreva o produto/serviço...">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Qtd.</label>
@@ -179,10 +185,9 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
             </div>
         </div>
 
-        <!-- Seção COMUM: nome (pronto usa hidden), descrição, custos, percentuais -->
+        <!-- Seção COMUM: descrição, preço direto (pronto) ou custos (personalizado), desconto e totais -->
         <div class="row g-2">
             <?php if ($tipoItem === 'pronto'): ?>
-                <!-- Pronto: nome e dimensão vindos do produto via JS -->
                 <input type="hidden" name="item_produto_nome[]" class="item-nome-hidden" value="<?= htmlspecialchars($item['produto_nome'] ?? '') ?>">
                 <input type="hidden" name="item_material_tipo[]" value="">
                 <input type="hidden" name="item_largura[]" value="<?= orcDecimal($item['largura'] ?? 0) ?>">
@@ -194,22 +199,38 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                 <label class="form-label">Descrição</label>
                 <input class="form-control item-input" name="item_descricao[]" value="<?= htmlspecialchars($item['descricao'] ?? '') ?>" placeholder="Acabamento, observações técnicas">
             </div>
-            <?php foreach ($custos as $name => [$label, $key]): ?>
-                <div class="col-md-2">
-                    <label class="form-label"><?= $label ?></label>
-                    <input class="form-control item-input money" name="<?= $name ?>[]" value="<?= orcMoney($item[$key] ?? 0) ?>">
+            <!-- Preço unitário direto — visível somente para Produto Pronto -->
+            <div class="col-md-4 item-preco-pronto-wrap" <?= $tipoItem !== 'pronto' ? 'style="display:none"' : '' ?>>
+                <label class="form-label fw-bold">Preço unitário</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">R$</span>
+                    <input class="form-control item-input money" name="item_preco_unitario[]" value="<?= orcMoney($item['preco_unitario'] ?? 0) ?>" placeholder="0,00">
                 </div>
-            <?php endforeach; ?>
-            <?php foreach ($percents as $name => [$label, $key, $default]): ?>
-                <div class="col-md-2">
-                    <label class="form-label"><?= $label ?></label>
-                    <input class="form-control item-input percent" name="<?= $name ?>[]" value="<?= htmlspecialchars((string)($item[$key] ?? $default)) ?>">
+            </div>
+            <!-- Custos e percentuais de cálculo — ocultos da interface (submetidos para cálculo interno) -->
+            <div class="col-12 p-0 custos-section" style="display:none">
+                <div class="row g-2">
+                    <?php foreach ($custos as $name => [$label, $key]): ?>
+                        <div class="col-md-2">
+                            <label class="form-label"><?= $label ?></label>
+                            <input class="form-control item-input money" name="<?= $name ?>[]" value="<?= orcMoney($item[$key] ?? 0) ?>">
+                        </div>
+                    <?php endforeach; ?>
+                    <?php foreach ($percents as $name => [$label, $key, $default]): ?>
+                        <?php if ($name === 'item_desconto_percent') continue; ?>
+                        <div class="col-md-2">
+                            <label class="form-label"><?= $label ?></label>
+                            <input class="form-control item-input percent" name="<?= $name ?>[]" value="<?= htmlspecialchars((string)($item[$key] ?? $default)) ?>">
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-            <?php endforeach; ?>
+            </div>
+            <!-- Desconto — campo oculto (mantido para cálculo) -->
+            <input type="hidden" class="item-input percent" name="item_desconto_percent[]" value="<?= htmlspecialchars((string)($item['desconto_percent'] ?? 0)) ?>">
             <div class="col-md-2 d-flex align-items-end">
                 <span class="badge badge-success w-100 justify-content-center" data-item-total>R$ 0,00</span>
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-md-4 d-flex align-items-end material-preview-section" <?= $tipoItem === 'pronto' ? 'style="display:none"' : '' ?>>
                 <span class="badge badge-warning w-100 justify-content-center" data-material-preview>Sem reserva</span>
             </div>
         </div>
@@ -244,10 +265,10 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Cliente</label>
-                            <select class="form-select" name="cliente_id">
-                                <option value="">-- Sem cliente vinculado --</option>
+                            <select class="form-select" name="cliente_id" id="cliente_id">
+                                <option value="" data-tipo-cliente="">-- Sem cliente vinculado --</option>
                                 <?php foreach ($contexto['clientes'] as $cliente): ?>
-                                    <option value="<?= $cliente['id'] ?>" <?= (string)($orcamento['cliente_id'] ?? '') === (string)$cliente['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cliente['nome']) ?></option>
+                                    <option value="<?= $cliente['id'] ?>" data-tipo-cliente="<?= htmlspecialchars($cliente['tipo_cliente'] ?? 'cliente_final') ?>" <?= (string)($orcamento['cliente_id'] ?? '') === (string)$cliente['id'] ? 'selected' : '' ?>><?= htmlspecialchars($cliente['nome']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -267,6 +288,21 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                                     <option value="<?= $vendedor['id'] ?>" <?= (string)($orcamento['vendedor_id'] ?? Auth::id()) === (string)$vendedor['id'] ? 'selected' : '' ?>><?= htmlspecialchars($vendedor['nome']) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tabela de Preços</label>
+                            <?php
+                            $tabelaLabels = [
+                                'cliente_final' => 'Cliente Final',
+                                'revenda'       => 'Revenda / Parceiro',
+                                'terceirizado'  => 'Terceirizado',
+                            ];
+                            $tabelaAtual = $orcamento['tipo_preco'] ?? 'cliente_final';
+                            ?>
+                            <input type="hidden" name="tipo_preco" id="tipo_preco_hidden" value="<?= htmlspecialchars($tabelaAtual) ?>">
+                            <div class="form-control bg-light" id="tipo_preco_display" style="cursor:default; user-select:none;">
+                                <?= htmlspecialchars($tabelaLabels[$tabelaAtual] ?? $tabelaAtual) ?>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Status</label>
@@ -421,6 +457,54 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
 
 <script>
     (function() {
+        const appUrl = '<?= APP_URL ?>';
+        const tabelaLabels = {
+            'cliente_final': 'Cliente Final',
+            'revenda': 'Revenda / Parceiro',
+            'terceirizado': 'Terceirizado',
+        };
+
+        function precoProdutoPorTabela(option, tipoPreco) {
+            if (!option) return 0;
+            const precosMap = {
+                'cliente_final': parseFloat(option.dataset.precoClienteFinal || 0),
+                'revenda': parseFloat(option.dataset.precoRevenda || 0),
+                'terceirizado': parseFloat(option.dataset.precoTerceirizado || 0),
+            };
+            const precoTabela = precosMap[tipoPreco] || 0;
+            if (tipoPreco !== 'cliente_final' && precoTabela > 0) return precoTabela;
+            return precosMap['cliente_final'] || 0;
+        }
+
+        function atualizarPrecoItemPorTabela(item, tipoPreco) {
+            const tipoItem = item.querySelector('.tipo-item-input')?.value || 'personalizado';
+            const select = tipoItem === 'pronto'
+                ? item.querySelector('[data-produto-select]')
+                : item.querySelector('[data-catalogo-select]');
+            if (!select || !select.value) return;
+
+            const precoInput = item.querySelector('[name="item_preco_unitario[]"]');
+            if (!precoInput) return;
+
+            precoInput.value = precoProdutoPorTabela(select.selectedOptions[0], tipoPreco).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function setTipoPreco(valor) {
+            const hidden = document.getElementById('tipo_preco_hidden');
+            const display = document.getElementById('tipo_preco_display');
+            if (!hidden) return;
+            const anterior = hidden.value;
+            hidden.value = valor;
+            if (display) display.textContent = tabelaLabels[valor] || valor;
+            if (valor === anterior) return;
+            document.querySelectorAll('[data-item]').forEach(item => {
+                atualizarPrecoItemPorTabela(item, valor);
+            });
+            calcularOrcamento();
+        }
         const brNumber = value => {
             if (value === null || value === undefined || value === '') return 0;
             value = String(value).replace(/[^0-9,.-]/g, '');
@@ -449,29 +533,72 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
             document.querySelectorAll('[data-item]').forEach((item, index) => {
                 item.querySelector('[data-item-number]').textContent = index + 1;
                 const q = Math.max(0.001, brNumber(item.querySelector('[name="item_quantidade[]"]').value));
-                const materialSelect = item.querySelector('[data-material-select]');
-                const materialOption = materialSelect?.selectedOptions[0];
-                const materialQtd = brNumber(item.querySelector('[name="item_material_quantidade[]"]').value);
-                if (materialOption && materialOption.value && materialQtd > 0) {
-                    setValue(item, 'item_custo_material[]', materialQtd * brNumber(materialOption.dataset.custo), true);
-                    item.querySelector('[data-material-preview]').textContent = brDecimal(materialQtd * q) + ' ' + (materialOption.dataset.unidade || 'un') + ' reservados';
-                    item.querySelector('[data-material-preview]').className = 'badge badge-warning w-100 justify-content-center';
-                } else {
-                    item.querySelector('[data-material-preview]').textContent = 'Sem reserva';
-                    item.querySelector('[data-material-preview]').className = 'badge badge-secondary w-100 justify-content-center';
-                }
-                const custos = ['item_custo_material[]', 'item_custo_tinta[]', 'item_custo_acabamento[]', 'item_custo_mao_obra[]', 'item_custo_maquina[]', 'item_custo_terceiros[]']
-                    .reduce((sum, name) => sum + brNumber(item.querySelector(`[name="${name}"]`).value), 0);
-                const desperdicio = brNumber(item.querySelector('[name="item_desperdicio_percent[]"]').value);
-                const margem = brNumber(item.querySelector('[name="item_margem_percent[]"]').value);
-                const impostos = brNumber(item.querySelector('[name="item_impostos_percent[]"]').value);
-                const comissao = brNumber(item.querySelector('[name="item_comissao_percent[]"]').value);
+                const tipoItem = item.querySelector('.tipo-item-input')?.value || 'personalizado';
                 const desconto = brNumber(item.querySelector('[name="item_desconto_percent[]"]').value);
-                const custoComDesperdicio = custos * (1 + desperdicio / 100);
-                const custoTotal = custoComDesperdicio * q;
-                let precoUnitario = custoComDesperdicio * (1 + ((margem + impostos + comissao) / 100));
-                precoUnitario = precoUnitario * (1 - desconto / 100);
-                const totalItem = precoUnitario * q;
+                // Dimensões e área
+                const largura = brNumber(item.querySelector('[name="item_largura[]"]')?.value || 0);
+                const altura = brNumber(item.querySelector('[name="item_altura[]"]')?.value || 0);
+                const area = (largura > 0 && altura > 0) ? largura * altura : 1;
+                const areaBadge = item.querySelector('[data-area-badge]');
+                if (areaBadge) {
+                    if (largura > 0 && altura > 0) {
+                        areaBadge.textContent = (largura * altura).toLocaleString('pt-BR', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 4
+                        }) + ' m²';
+                        areaBadge.className = 'badge badge-primary w-100 justify-content-center';
+                    } else {
+                        areaBadge.textContent = '-- m²';
+                        areaBadge.className = 'badge badge-info w-100 justify-content-center';
+                    }
+                }
+                let custoTotal = 0;
+                let totalItem = 0;
+
+                if (tipoItem === 'pronto') {
+                    // Custos vindos dos inputs ocultos (populados ao selecionar produto — rastreia margem)
+                    const custos = ['item_custo_material[]', 'item_custo_tinta[]', 'item_custo_acabamento[]', 'item_custo_mao_obra[]', 'item_custo_maquina[]', 'item_custo_terceiros[]']
+                        .reduce((sum, name) => sum + brNumber(item.querySelector(`[name="${name}"]`)?.value || 0), 0);
+                    const desperdicio = brNumber(item.querySelector('[name="item_desperdicio_percent[]"]')?.value || 0);
+                    custoTotal = custos * (1 + desperdicio / 100) * q;
+                    // Preço fixo do catálogo
+                    const precoUnit = brNumber(item.querySelector('[name="item_preco_unitario[]"]')?.value || 0);
+                    totalItem = precoUnit * q * (1 - desconto / 100);
+                    const mp = item.querySelector('[data-material-preview]');
+                    if (mp) {
+                        mp.textContent = 'Sem reserva';
+                        mp.className = 'badge badge-secondary w-100 justify-content-center';
+                    }
+                } else {
+                    // Personalizado: cálculo por custos + margem
+                    const materialSelect = item.querySelector('[data-material-select]');
+                    const materialOption = materialSelect?.selectedOptions[0];
+                    const materialQtd = brNumber(item.querySelector('[name="item_material_quantidade[]"]').value);
+                    if (materialOption && materialOption.value && materialQtd > 0) {
+                        setValue(item, 'item_custo_material[]', materialQtd * brNumber(materialOption.dataset.custo), true);
+                        item.querySelector('[data-material-preview]').textContent = brDecimal(materialQtd * q) + ' ' + (materialOption.dataset.unidade || 'un') + ' reservados';
+                        item.querySelector('[data-material-preview]').className = 'badge badge-warning w-100 justify-content-center';
+                    } else {
+                        item.querySelector('[data-material-preview]').textContent = 'Sem reserva';
+                        item.querySelector('[data-material-preview]').className = 'badge badge-secondary w-100 justify-content-center';
+                    }
+                    const custos = ['item_custo_material[]', 'item_custo_tinta[]', 'item_custo_acabamento[]', 'item_custo_mao_obra[]', 'item_custo_maquina[]', 'item_custo_terceiros[]']
+                        .reduce((sum, name) => sum + brNumber(item.querySelector(`[name="${name}"]`).value), 0);
+                    const desperdicio = brNumber(item.querySelector('[name="item_desperdicio_percent[]"]').value);
+                    const margem = brNumber(item.querySelector('[name="item_margem_percent[]"]').value);
+                    const impostos = brNumber(item.querySelector('[name="item_impostos_percent[]"]').value);
+                    const comissao = brNumber(item.querySelector('[name="item_comissao_percent[]"]').value);
+                    const custoComDesperdicio = custos * (1 + desperdicio / 100);
+                    custoTotal = custoComDesperdicio * area * q;
+                    let precoUnitario = custoComDesperdicio * (1 + ((margem + impostos + comissao) / 100));
+                    precoUnitario = precoUnitario * (1 - desconto / 100);
+                    // Se veio preço do catálogo, usa price_per_m² × área
+                    const precoCatalogo = brNumber(item.querySelector('[name="item_preco_unitario[]"]')?.value || 0);
+                    totalItem = precoCatalogo > 0 ?
+                        precoCatalogo * (1 - desconto / 100) * area * q :
+                        precoUnitario * area * q;
+                }
+
                 subtotalCusto += custoTotal;
                 subtotalVenda += totalItem;
                 item.querySelector('[data-item-total]').textContent = brMoney(totalItem);
@@ -513,9 +640,62 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
                 setValue(item, 'item_margem_percent[]', option.dataset.margem || 35);
                 setValue(item, 'item_impostos_percent[]', option.dataset.impostos || 8);
                 setValue(item, 'item_comissao_percent[]', option.dataset.comissao || 5);
+                // Preenche preço fixo com base na tabela de preços selecionada no orçamento
+                const tipoPrecoBruto = document.getElementById('tipo_preco_hidden')?.value || 'cliente_final';
+                const precoFixed = precoProdutoPorTabela(option, tipoPrecoBruto);
+                const precoInput = item.querySelector('[name="item_preco_unitario[]"]');
+                if (precoInput) precoInput.value = precoFixed.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
                 calcularOrcamento();
             }
             if (event.target.matches('[data-material-select]')) {
+                calcularOrcamento();
+            }
+            // Cliente selecionado: ajusta tabela de preços automaticamente
+            if (event.target.matches('#cliente_id')) {
+                const tipoCliente = event.target.selectedOptions[0]?.dataset?.tipoCliente || '';
+                const mapa = {
+                    'revenda': 'revenda',
+                    'parceiro': 'revenda',
+                    'terceirizado': 'terceirizado',
+                    'corporativo': 'terceirizado',
+                    'orgao_publico': 'terceirizado'
+                };
+                setTipoPreco(mapa[tipoCliente] || 'cliente_final');
+            }
+            // Catálogo no item personalizado: preenche dados do produto selecionado
+            if (event.target.matches('[data-catalogo-select]')) {
+                const opt = event.target.selectedOptions[0];
+                const item = event.target.closest('[data-item]');
+                if (!item) return;
+                const idHidden = item.querySelector('.pers-produto-id');
+                if (idHidden) idHidden.value = opt?.value || '';
+                if (opt?.value) {
+                    // Preenche nome
+                    const nomeInput = item.querySelector('[name="item_produto_nome[]"]');
+                    if (nomeInput) nomeInput.value = opt.dataset.nome || '';
+                    // Preenche dimensões e custos
+                    setValue(item, 'item_unidade[]', opt.dataset.unidade || 'un');
+                    setValue(item, 'item_largura[]', opt.dataset.largura || '0');
+                    setValue(item, 'item_altura[]', opt.dataset.altura || '0');
+                    setValue(item, 'item_custo_material[]', opt.dataset.custoMaterial || 0, true);
+                    setValue(item, 'item_custo_tinta[]', opt.dataset.custoTinta || 0, true);
+                    setValue(item, 'item_custo_acabamento[]', opt.dataset.custoAcabamento || 0, true);
+                    setValue(item, 'item_custo_mao_obra[]', opt.dataset.custoMaoObra || 0, true);
+                    setValue(item, 'item_custo_maquina[]', opt.dataset.custoMaquina || 0, true);
+                    setValue(item, 'item_custo_terceiros[]', opt.dataset.custoTerceiros || 0, true);
+                    setValue(item, 'item_desperdicio_percent[]', opt.dataset.desperdicio || 5);
+                    setValue(item, 'item_margem_percent[]', opt.dataset.margem || 35);
+                    setValue(item, 'item_impostos_percent[]', opt.dataset.impostos || 8);
+                    setValue(item, 'item_comissao_percent[]', opt.dataset.comissao || 5);
+                    // Preço por tabela
+                    const tipoPreco = document.getElementById('tipo_preco_hidden')?.value || 'cliente_final';
+                    setValue(item, 'item_preco_unitario[]', precoProdutoPorTabela(opt, tipoPreco), true);
+                } else {
+                    setValue(item, 'item_preco_unitario[]', 0, true);
+                }
                 calcularOrcamento();
             }
         });
@@ -588,9 +768,24 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
             // Toggle buttons active state
             item.querySelectorAll('.tipo-btn').forEach(b => b.classList.toggle('active', b.dataset.tipo === tipo));
 
-            // Show/hide sections
+            // Show/hide produto sections
             item.querySelector('.item-secao-pronto').style.display = tipo === 'pronto' ? '' : 'none';
             item.querySelector('.item-secao-personalizado').style.display = tipo === 'personalizado' ? '' : 'none';
+            // Desabilita inputs da seção inativa para evitar duplicação no POST
+            item.querySelectorAll('.item-secao-pronto input, .item-secao-pronto select').forEach(el => {
+                el.disabled = tipo !== 'pronto';
+            });
+            item.querySelectorAll('.item-secao-personalizado input, .item-secao-personalizado select').forEach(el => {
+                el.disabled = tipo !== 'personalizado';
+            });
+
+            // Show/hide pricing sections
+            const precoProntoWrap = item.querySelector('.item-preco-pronto-wrap');
+            const custosSection = item.querySelector('.custos-section');
+            const materialPreviewSection = item.querySelector('.material-preview-section');
+            if (precoProntoWrap) precoProntoWrap.style.display = tipo === 'pronto' ? '' : 'none';
+            if (custosSection) custosSection.style.display = 'none'; // sempre oculto
+            if (materialPreviewSection) materialPreviewSection.style.display = tipo === 'pronto' ? 'none' : '';
         });
 
         // ---- Produto Pronto: update stock badge + dims + nome hidden ----
@@ -625,6 +820,26 @@ function renderOrcamentoItem(array $item, int $index, array $contexto): void
             // Sync nome hidden (for pronto mode)
             const nomeHidden = item.querySelector('.item-nome-hidden');
             if (nomeHidden && opt) nomeHidden.value = opt.dataset.nome || '';
+            // Buscar materiais da ficha técnica
+            const bomBadge = item.querySelector('[data-bom-badge]');
+            if (bomBadge && opt && opt.value) {
+                fetch(appUrl + '/api/produto-materiais/' + opt.value)
+                    .then(r => r.text()).then(t => {
+                        try {
+                            const bom = JSON.parse(t);
+                            if (bom.length > 0) {
+                                bomBadge.textContent = bom.map(b => b.quantidade_formatada + ' ' + b.label).join(' | ');
+                                bomBadge.className = 'badge badge-info ms-1';
+                            } else {
+                                bomBadge.textContent = 'Sem materiais na ficha';
+                                bomBadge.className = 'badge badge-secondary ms-1';
+                            }
+                        } catch (e) {}
+                    }).catch(() => {});
+            } else if (bomBadge) {
+                bomBadge.textContent = 'Materiais: --';
+                bomBadge.className = 'badge badge-secondary ms-1';
+            }
         });
 
         // ---- Personalizado: auto-calc m² badge ----

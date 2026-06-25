@@ -3,6 +3,8 @@ use App\Services\Auth;
 
 $csrfToken = Auth::csrfToken();
 $empresa = $empresa ?? [];
+$viicioEndpoint = $empresa['endpoint_whatsapp'] ?? 'https://api.viicio.com.br/api/messages/send';
+$viicioEndpoint = trim($viicioEndpoint) !== '' ? $viicioEndpoint : 'https://api.viicio.com.br/api/messages/send';
 $webhookStatusClasses = [
     'recebido' => 'badge-info',
     'processado' => 'badge-success',
@@ -70,7 +72,7 @@ if (!function_exists('mascararSegredo')) {
                 </div>
                 <div class="p-3">
                     <label class="form-label">Endpoint HTTP request</label>
-                    <input class="form-control mb-3" name="endpoint_whatsapp" value="<?= htmlspecialchars($empresa['endpoint_whatsapp'] ?? '') ?>" placeholder="https://api.viicio.com/...">
+                    <input class="form-control mb-3" name="endpoint_whatsapp" value="<?= htmlspecialchars($viicioEndpoint) ?>" placeholder="https://api.viicio.com.br/api/messages/send">
                     <label class="form-label">Token Viicio</label>
                     <input class="form-control mb-3" name="token_whatsapp" value="<?= htmlspecialchars($empresa['token_whatsapp'] ?? '') ?>">
                     <label class="form-label">Modo WhatsApp</label>
@@ -83,7 +85,7 @@ if (!function_exists('mascararSegredo')) {
                     <label class="form-label">URL do webhook Viicio</label>
                     <input class="form-control mb-2" readonly value="<?= htmlspecialchars($webhookUrls['viicio']) ?>">
                     <span class="badge badge-info">Aceita token por query string ?token=... ou header X-Webhook-Token</span>
-                    <span class="badge badge-secondary">Envio atual usa JSON com phone e message</span>
+                    <span class="badge badge-secondary">Envio usa POST JSON com number e body</span>
                 </div>
                 <div class="px-3 pb-3">
                     <button class="btn btn-secondary btn-sm" formaction="<?= APP_URL ?>/integracoes/testar" formmethod="POST" name="tipo" value="viicio" type="submit">

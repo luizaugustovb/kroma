@@ -4,6 +4,8 @@ namespace App\Services;
 
 class WhatsAppService
 {
+    private const VIICIO_ENDPOINT = 'https://api.viicio.com.br/api/messages/send';
+
     public function enviar(array $dados): array
     {
         $telefone = $this->normalizarTelefone($dados['telefone'] ?? '');
@@ -37,7 +39,9 @@ class WhatsAppService
             ]);
         }
 
-        if (empty($config['token_whatsapp']) || empty($config['endpoint_whatsapp'])) {
+        $config['endpoint_whatsapp'] = trim($config['endpoint_whatsapp'] ?? '') ?: self::VIICIO_ENDPOINT;
+
+        if (empty($config['token_whatsapp'])) {
             return $this->registrar([
                 'cliente_id' => $clienteId,
                 'telefone' => $telefone,
@@ -45,7 +49,7 @@ class WhatsAppService
                 'tipo' => $tipo,
                 'origem' => $origem,
                 'status' => 'erro',
-                'erro' => 'Configure token e endpoint da API Viicio em Integrações.',
+                'erro' => 'Configure o token da API Viicio em Integracoes.',
             ]);
         }
 
@@ -87,12 +91,13 @@ class WhatsAppService
         }
 
         $payload = json_encode([
-            'phone' => $dados['telefone'],
-            'message' => $dados['mensagem'],
+            'number' => $dados['telefone'],
+            'body' => $dados['mensagem'],
         ], JSON_UNESCAPED_UNICODE);
 
         $ch = curl_init($config['endpoint_whatsapp']);
         curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST => 'POST',
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $payload,
             CURLOPT_RETURNTRANSFER => true,

@@ -1,4 +1,6 @@
 <?php
+use App\Services\Auth;
+
 $statusClasses = [
     'ativo' => 'badge-success',
     'inativo' => 'badge-secondary',
@@ -57,33 +59,46 @@ $revisao = array_filter($produtos, fn($p) => $p['status'] === 'em_revisao');
         </thead>
         <tbody>
             <?php foreach ($produtos as $produto): ?>
-            <tr>
-                <td><strong><?= htmlspecialchars($produto['codigo'] ?? '-') ?></strong></td>
-                <td>
-                    <div style="font-weight:700"><?= htmlspecialchars($produto['nome']) ?></div>
-                    <div style="font-size:12px;color:var(--text-muted)">
-                        <?= htmlspecialchars($produto['unidade']) ?>
-                        <?php if ((int)$produto['prioridade_8020'] === 1): ?>
-                            <span class="badge badge-warning ms-1">80/20</span>
-                        <?php endif; ?>
-                    </div>
-                </td>
-                <td><?= htmlspecialchars($produto['categoria_nome'] ?? '-') ?></td>
-                <td><span class="badge badge-info"><?= $tipoLabels[$produto['tipo']] ?? $produto['tipo'] ?></span></td>
-                <td><strong>R$ <?= number_format((float)$produto['preco_base'], 2, ',', '.') ?></strong></td>
-                <td><span class="badge badge-warning">R$ <?= number_format((float)$produto['preco_minimo'], 2, ',', '.') ?></span></td>
-                <td>
-                    <span class="badge badge-secondary"><?= (int)$produto['total_variacoes'] ?> variações</span>
-                    <span class="badge badge-primary"><?= (int)$produto['total_processos'] ?> processos</span>
-                </td>
-                <td><span class="badge <?= $statusClasses[$produto['status']] ?? 'badge-secondary' ?>"><?= $statusLabels[$produto['status']] ?? $produto['status'] ?></span></td>
-                <td>
-                    <div class="d-flex gap-1">
-                        <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
-                        <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
-                    </div>
-                </td>
-            </tr>
+                <tr>
+                    <td><strong><?= htmlspecialchars($produto['codigo'] ?? '-') ?></strong></td>
+                    <td>
+                        <div style="font-weight:700"><?= htmlspecialchars($produto['nome']) ?></div>
+                        <div style="font-size:12px;color:var(--text-muted)">
+                            <?= htmlspecialchars($produto['unidade']) ?>
+                            <?php if ((int)$produto['prioridade_8020'] === 1): ?>
+                                <span class="badge badge-warning ms-1">80/20</span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td><?= htmlspecialchars($produto['categoria_nome'] ?? '-') ?></td>
+                    <td><span class="badge badge-info"><?= $tipoLabels[$produto['tipo']] ?? $produto['tipo'] ?></span></td>
+                    <td><strong>R$ <?= number_format((float)$produto['preco_base'], 2, ',', '.') ?></strong></td>
+                    <td><span class="badge badge-warning">R$ <?= number_format((float)$produto['preco_minimo'], 2, ',', '.') ?></span></td>
+                    <td>
+                        <span class="badge badge-secondary"><?= (int)$produto['total_variacoes'] ?> variações</span>
+                        <span class="badge badge-primary"><?= (int)$produto['total_processos'] ?> processos</span>
+                    </td>
+                    <td><span class="badge <?= $statusClasses[$produto['status']] ?? 'badge-secondary' ?>"><?= $statusLabels[$produto['status']] ?? $produto['status'] ?></span></td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
+                            <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
+                            <?php if (Auth::temPerfil('administrador')): ?>
+                                <?php if ($produto['status'] === 'inativo'): ?>
+                                    <form method="POST" action="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>/excluir" class="d-inline" onsubmit="return confirm('EXCLUIR PERMANENTEMENTE \" <?= htmlspecialchars(addslashes($produto['nome'])) ?>\"? Esta ação não pode ser desfeita!')">
+                                        <input type="hidden" name="csrf_token" value="<?= Auth::csrfToken() ?>">
+                                        <button type="submit" class="btn btn-icon btn-danger btn-sm" title="Excluir permanentemente"><i class="bi bi-trash-fill"></i></button>
+                                    </form>
+                                <?php else: ?>
+                                    <form method="POST" action="<?= APP_URL ?>/produtos/<?= $produto['id'] ?>/excluir" class="d-inline" onsubmit="return confirm('Inativar produto \" <?= htmlspecialchars(addslashes($produto['nome'])) ?>\"?')">
+                                        <input type="hidden" name="csrf_token" value="<?= Auth::csrfToken() ?>">
+                                        <button type="submit" class="btn btn-icon btn-warning btn-sm" title="Inativar"><i class="bi bi-slash-circle"></i></button>
+                                    </form>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
             <?php endforeach; ?>
         </tbody>
     </table>

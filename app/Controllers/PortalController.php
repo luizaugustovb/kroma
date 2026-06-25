@@ -100,6 +100,20 @@ class PortalController
             exit;
         }
 
+        try {
+            $arquivos = $this->salvarArquivosSolicitacao($cliente);
+        } catch (\Exception $e) {
+            $_SESSION['flash_error'] = $e->getMessage();
+            header('Location: ' . APP_URL . '/portal');
+            exit;
+        }
+
+        $observacoes = $prazo !== '' ? 'Prazo desejado: ' . $prazo : '';
+        if ($arquivos) {
+            $linhas = array_map(fn($arquivo) => '- ' . $arquivo['nome'] . ': ' . $arquivo['url'], $arquivos);
+            $observacoes .= ($observacoes !== '' ? "\n\n" : '') . "Arquivos enviados:\n" . implode("\n", $linhas);
+        }
+
         $campos = [
             'cliente_id' => (int)$cliente['id'],
             'vendedor_id' => null,
@@ -117,7 +131,7 @@ class PortalController
             'data_follow_up' => null,
             'prioridade' => 'media',
             'temperatura' => 'morno',
-            'observacoes' => $prazo !== '' ? 'Prazo desejado: ' . $prazo : '',
+            'observacoes' => $observacoes,
         ];
 
         try {
@@ -140,6 +154,73 @@ class PortalController
 
         header('Location: ' . APP_URL . '/portal');
         exit;
+    }
+
+    private function salvarArquivosSolicitacao(array $cliente): array
+    {
+        if (empty($_FILES['arquivos']) || empty($_FILES['arquivos']['name'])) {
+            return [];
+        }
+
+        $permitidas = [
+            'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'tif', 'tiff', 'svg',
+            'pdf', 'cdr', 'psd', 'ai', 'eps', 'zip', 'rar',
+        ];
+        $arquivos = $_FILES['arquivos'];
+        $nomes = is_array($arquivos['name']) ? $arquivos['name'] : [$arquivos['name']];
+        $tmpNames = is_array($arquivos['tmp_name']) ? $arquivos['tmp_name'] : [$arquivos['tmp_name']];
+        $erros = is_array($arquivos['error']) ? $arquivos['error'] : [$arquivos['error']];
+        $tamanhos = is_array($arquivos['size']) ? $arquivos['size'] : [$arquivos['size']];
+
+        $totalValidos = count(array_filter($nomes, fn($nome) => trim((string)$nome) !== ''));
+        if ($totalValidos === 0) {
+            return [];
+        }
+        if ($totalValidos > 10) {
+            throw new \Exception('Envie no maximo 10 arquivos por solicitacao.');
+        }
+
+        $uploadDir = PUBLIC_PATH . '/uploads/portal-solicitacoes';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $salvos = [];
+        foreach ($nomes as $i => $nomeOriginal) {
+            $nomeOriginal = trim((string)$nomeOriginal);
+            if ($nomeOriginal === '' || (int)$erros[$i] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            if ((int)$erros[$i] !== UPLOAD_ERR_OK) {
+                throw new \Exception('Falha ao receber o arquivo ' . $nomeOriginal . '.');
+            }
+            if ((int)$tamanhos[$i] > UPLOAD_MAX_SIZE) {
+                throw new \Exception('Arquivo muito grande: ' . $nomeOriginal . '.');
+            }
+
+            $ext = strtolower(pathinfo($nomeOriginal, PATHINFO_EXTENSION));
+            if (!in_array($ext, $permitidas, true)) {
+                throw new \Exception('Tipo de arquivo nao permitido: ' . $nomeOriginal . '.');
+            }
+
+            $base = pathinfo($nomeOriginal, PATHINFO_FILENAME);
+            $base = preg_replace('/[^a-zA-Z0-9._-]+/', '-', $base);
+            $base = trim($base, '-_.') ?: 'arquivo';
+            $filename = 'cliente-' . (int)$cliente['id'] . '-' . date('YmdHis') . '-' . bin2hex(random_bytes(3)) . '-' . $base . '.' . $ext;
+            $destino = $uploadDir . '/' . $filename;
+
+            if (!move_uploaded_file($tmpNames[$i], $destino)) {
+                throw new \Exception('Nao foi possivel salvar o arquivo ' . $nomeOriginal . '.');
+            }
+
+            $salvos[] = [
+                'nome' => $nomeOriginal,
+                'arquivo' => $filename,
+                'url' => APP_URL . '/public/uploads/portal-solicitacoes/' . rawurlencode($filename),
+            ];
+        }
+
+        return $salvos;
     }
 
     private function clienteDoUsuario(): ?array

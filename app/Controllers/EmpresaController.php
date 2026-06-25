@@ -7,6 +7,8 @@ use App\Services\Auth;
 
 class EmpresaController
 {
+    private const VIICIO_ENDPOINT = 'https://api.viicio.com.br/api/messages/send';
+
     public function __construct()
     {
         AuthMiddleware::handle();
@@ -51,7 +53,7 @@ class EmpresaController
             'slogan' => trim($_POST['slogan'] ?? ''),
             'condicoes_orcamento' => trim($_POST['condicoes_orcamento'] ?? ''),
             'token_whatsapp' => trim($_POST['token_whatsapp'] ?? ''),
-            'endpoint_whatsapp' => trim($_POST['endpoint_whatsapp'] ?? ''),
+            'endpoint_whatsapp' => trim($_POST['endpoint_whatsapp'] ?? '') ?: self::VIICIO_ENDPOINT,
             'modo_whatsapp' => in_array($_POST['modo_whatsapp'] ?? 'simulado', ['simulado','producao'], true) ? $_POST['modo_whatsapp'] : 'simulado',
             'chave_openai' => trim($_POST['chave_openai'] ?? ''),
             'chave_gemini' => trim($_POST['chave_gemini'] ?? ''),

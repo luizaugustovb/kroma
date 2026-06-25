@@ -36,6 +36,21 @@ $estagioLabels = [
                 </table>
             </div>
         </div>
+        <?php if (!empty($arquivosLead)): ?>
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="card-title"><i class="bi bi-paperclip me-2 text-success-kroma"></i>Arquivos enviados</h6>
+                <span class="badge badge-info"><?= count($arquivosLead) ?> arquivo(s)</span>
+            </div>
+            <div class="p-3 d-flex gap-2 flex-wrap">
+                <?php foreach ($arquivosLead as $arquivo): ?>
+                <a class="btn btn-secondary btn-sm" href="<?= htmlspecialchars($arquivo['url']) ?>" target="_blank" rel="noopener">
+                    <i class="bi bi-box-arrow-up-right"></i> <?= htmlspecialchars($arquivo['nome']) ?>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
     <div class="col-lg-4">
         <div class="card mb-3">

@@ -61,12 +61,18 @@ class ProdutoController
             'margem_percent' => 35,
             'impostos_percent' => 8,
             'comissao_percent' => 5,
+            'desc_revenda_percent' => 15,
+            'desc_terceirizado_percent' => 25,
+            'preco_cliente_final' => 0,
+            'preco_revenda' => 0,
+            'preco_terceirizado' => 0,
             'status' => 'ativo',
         ];
         $variacoes = [$this->variacaoVazia()];
         $produtoProcessos = [];
         $produtoAcabamentos = [];
         $produtoAcabamentosObrigatorios = [];
+        $produtoMateriais = [];
         $contexto = $this->contextoFormulario();
         $titulo = 'Novo Produto';
         $subtitulo = 'Cadastre produto base, composição e processos produtivos';
@@ -125,6 +131,7 @@ class ProdutoController
             array_filter($acabamentosProduto, fn($a) => (int)($a['obrigatorio'] ?? 0) === 1),
             'acabamento_id'
         );
+        $produtoMateriais = $this->materiaisDoProduto($id);
         $contexto = $this->contextoFormulario();
         $titulo = 'Editar Produto';
         $subtitulo = $produto['codigo'] . ' - ' . $produto['nome'];
@@ -149,12 +156,33 @@ class ProdutoController
             exit;
         }
 
+        if (!Auth::temPerfil('administrador')) {
+            $_SESSION['flash_error'] = 'Apenas administradores podem excluir produtos.';
+            header('Location: ' . APP_URL . '/produtos');
+            exit;
+        }
+
+        $produto = $this->buscar($id);
+        if (!$produto) {
+            $_SESSION['flash_error'] = 'Produto não encontrado.';
+            header('Location: ' . APP_URL . '/produtos');
+            exit;
+        }
+
         try {
-            db()->prepare("UPDATE produtos SET status = 'inativo', updated_at = NOW() WHERE id = ?")->execute([$id]);
-            Auth::registrarAuditoria('produtos', 'excluir', (int)$id);
-            $_SESSION['flash_success'] = 'Produto inativado.';
+            if ($produto['status'] === 'inativo') {
+                // Segunda fase: exclusão permanente
+                db()->prepare("DELETE FROM produtos WHERE id = ?")->execute([$id]);
+                Auth::registrarAuditoria('produtos', 'excluir_permanente', (int)$id);
+                $_SESSION['flash_success'] = 'Produto excluído permanentemente.';
+            } else {
+                // Primeira fase: inativar
+                db()->prepare("UPDATE produtos SET status = 'inativo', updated_at = NOW() WHERE id = ?")->execute([$id]);
+                Auth::registrarAuditoria('produtos', 'inativar', (int)$id);
+                $_SESSION['flash_success'] = 'Produto inativado. Para excluir permanentemente, clique em excluir novamente.';
+            }
         } catch (\Exception $e) {
-            $_SESSION['flash_error'] = 'Erro ao inativar produto.';
+            $_SESSION['flash_error'] = 'Erro ao excluir produto.';
         }
 
         header('Location: ' . APP_URL . '/produtos');
@@ -211,6 +239,12 @@ class ProdutoController
                     'obrigatorio' => $a['obrigatorio'],
                 ]);
             }
+            $dupMatStmt = $pdo->prepare(
+                'INSERT INTO produto_materiais (produto_id, material_id, quantidade, unidade, observacao, created_at) VALUES (?, ?, ?, ?, ?, NOW())'
+            );
+            foreach ($this->materiaisDoProduto($id) as $m) {
+                $dupMatStmt->execute([$novoId, $m['material_id'], $m['quantidade'], $m['unidade'], $m['observacao']]);
+            }
             $pdo->commit();
             $_SESSION['flash_success'] = 'Produto duplicado com sucesso.';
             header('Location: ' . APP_URL . '/produtos/' . $novoId . '/editar');
@@ -260,6 +294,7 @@ class ProdutoController
                 $pdo->prepare("DELETE FROM produto_variacoes WHERE produto_id = ?")->execute([$produtoId]);
                 $pdo->prepare("DELETE FROM produto_processos WHERE produto_id = ?")->execute([$produtoId]);
                 $pdo->prepare("DELETE FROM produto_acabamentos WHERE produto_id = ?")->execute([$produtoId]);
+                $pdo->prepare("DELETE FROM produto_materiais WHERE produto_id = ?")->execute([$produtoId]);
                 $acao = 'editar';
             } else {
                 $colunas = implode(', ', array_keys($dados));
@@ -291,6 +326,20 @@ class ProdutoController
                     'acabamento_id' => (int)$acabamentoId,
                     'obrigatorio' => in_array((string)$acabamentoId, $_POST['acabamentos_obrigatorios'] ?? [], true) ? 1 : 0,
                 ]);
+            }
+            $matIds        = $_POST['mat_material_id'] ?? [];
+            $matQtds       = $_POST['mat_quantidade']   ?? [];
+            $matUnidades   = $_POST['mat_unidade']      ?? [];
+            $matObs        = $_POST['mat_observacao']   ?? [];
+            $matStmt = $pdo->prepare(
+                "INSERT INTO produto_materiais (produto_id, material_id, quantidade, unidade, observacao, created_at) VALUES (?, ?, ?, ?, ?, NOW())"
+            );
+            foreach ($matIds as $i => $matId) {
+                $matId = (int)$matId;
+                if ($matId <= 0) continue;
+                $qtd = (float)str_replace(',', '.', preg_replace('/[^0-9,.]/', '', (string)($matQtds[$i] ?? 1)));
+                if ($qtd <= 0) continue;
+                $matStmt->execute([$produtoId, $matId, $qtd, trim($matUnidades[$i] ?? ''), trim($matObs[$i] ?? '')]);
             }
 
             Auth::registrarAuditoria('produtos', $acao, $produtoId);
@@ -332,6 +381,11 @@ class ProdutoController
             'margem_percent' => $this->numero($_POST['margem_percent'] ?? 35),
             'impostos_percent' => $this->numero($_POST['impostos_percent'] ?? 8),
             'comissao_percent' => $this->numero($_POST['comissao_percent'] ?? 5),
+            'desc_revenda_percent' => $this->numero($_POST['desc_revenda_percent'] ?? 15),
+            'desc_terceirizado_percent' => $this->numero($_POST['desc_terceirizado_percent'] ?? 25),
+            'preco_cliente_final' => $this->numero($_POST['preco_cliente_final'] ?? 0),
+            'preco_revenda' => $this->numero($_POST['preco_revenda'] ?? 0),
+            'preco_terceirizado' => $this->numero($_POST['preco_terceirizado'] ?? 0),
             'prioridade_8020' => isset($_POST['prioridade_8020']) ? 1 : 0,
             'perecivel' => isset($_POST['perecivel']) ? 1 : 0,
             'validade_dias' => (int)($_POST['validade_dias'] ?? 0),
@@ -365,10 +419,18 @@ class ProdutoController
         $custo = $dados['custo_material'] + $dados['custo_tinta'] + $dados['custo_acabamento'] + $dados['custo_mao_obra'] + $dados['custo_maquina'] + $dados['custo_terceiros'];
         $custoComDesperdicio = $custo * (1 + ($dados['desperdicio_percent'] / 100));
         $precoMinimo = $custoComDesperdicio * (1 + (($dados['impostos_percent'] + $dados['comissao_percent']) / 100));
-        $precoBase = $custoComDesperdicio * (1 + (($dados['margem_percent'] + $dados['impostos_percent'] + $dados['comissao_percent']) / 100));
+        $precoBase  = round($custoComDesperdicio * (1 + (($dados['margem_percent'] + $dados['impostos_percent'] + $dados['comissao_percent']) / 100)), 2);
+
+        $clienteFinal  = $dados['preco_cliente_final']  > 0 ? $dados['preco_cliente_final']  : $precoBase;
+        $revenda       = $dados['preco_revenda']        > 0 ? $dados['preco_revenda']        : round($precoBase * (1 - ($dados['desc_revenda_percent'] / 100)), 2);
+        $terceirizado  = $dados['preco_terceirizado']   > 0 ? $dados['preco_terceirizado']   : round($precoBase * (1 - ($dados['desc_terceirizado_percent'] / 100)), 2);
+
         return [
-            'preco_minimo' => round($precoMinimo, 2),
-            'preco_base' => round($precoBase, 2),
+            'preco_minimo'        => round($precoMinimo, 2),
+            'preco_base'          => $precoBase,
+            'preco_cliente_final' => $clienteFinal,
+            'preco_revenda'       => $revenda,
+            'preco_terceirizado'  => $terceirizado,
         ];
     }
 
@@ -379,9 +441,27 @@ class ProdutoController
             'processos' => $this->query("SELECT * FROM processos_produtivos WHERE ativo = 1 ORDER BY setor, nome"),
             'acabamentos' => $this->query("SELECT * FROM acabamentos WHERE ativo = 1 ORDER BY nome"),
             'fornecedores' => $this->query("SELECT id, nome FROM fornecedores WHERE status = 'ativo' ORDER BY nome"),
+            'materiais' => $this->query("SELECT id, codigo, nome, unidade FROM materiais WHERE status = 'ativo' ORDER BY nome"),
             'tipoLabels' => $this->tipoLabels,
             'statusLabels' => $this->statusLabels,
         ];
+    }
+
+    private function materiaisDoProduto(string $produtoId): array
+    {
+        try {
+            $stmt = db()->prepare(
+                "SELECT pm.*, m.nome AS material_nome, m.codigo AS material_codigo, m.unidade AS material_unidade
+                 FROM produto_materiais pm
+                 JOIN materiais m ON m.id = pm.material_id
+                 WHERE pm.produto_id = ?
+                 ORDER BY pm.id"
+            );
+            $stmt->execute([$produtoId]);
+            return $stmt->fetchAll();
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     private function buscar(string $id): ?array

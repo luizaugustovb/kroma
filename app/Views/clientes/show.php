@@ -1,4 +1,7 @@
 <?php
+use App\Services\Auth;
+
+$csrfToken = Auth::csrfToken();
 $tipoLabels = [
     'cliente_final' => 'Cliente Final',
     'revenda' => 'Revenda',
@@ -37,6 +40,31 @@ $tipoLabels = [
                 </span>
             </div>
             <?php endforeach; ?>
+        </div>
+        <div class="card mt-3">
+            <h6 class="card-title mb-3"><i class="bi bi-person-lock me-2 text-primary-kroma"></i>Acesso do Cliente</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Portal</span>
+                <?php if (!empty($usuarioPortal)): ?>
+                    <span class="badge <?= !empty($usuarioPortal['ativo']) ? 'badge-success' : 'badge-secondary' ?>">
+                        <?= !empty($usuarioPortal['ativo']) ? 'Ativo' : 'Inativo' ?>
+                    </span>
+                <?php else: ?>
+                    <span class="badge badge-warning">Sem acesso</span>
+                <?php endif; ?>
+            </div>
+            <div class="small text-secondary mb-3">
+                Login: <?= htmlspecialchars($usuarioPortal['email'] ?? ($cliente['email'] ?? '-')) ?>
+            </div>
+            <?php if (Auth::temPerfil(['administrador', 'diretor', 'gerente'])): ?>
+            <form action="<?= APP_URL ?>/clientes/<?= $cliente['id'] ?>/resetar-senha" method="POST" data-loading
+                  onsubmit="return confirm('Resetar a senha do portal e enviar nova senha por WhatsApp?')">
+                <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
+                <button class="btn btn-secondary btn-sm w-100" type="submit">
+                    <i class="bi bi-key"></i> Resetar senha e avisar
+                </button>
+            </form>
+            <?php endif; ?>
         </div>
     </div>
     <div class="col-lg-8">

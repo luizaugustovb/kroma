@@ -183,6 +183,7 @@ class CrmController
             exit;
         }
 
+        $arquivosLead = $this->arquivosDoLead($lead['observacoes'] ?? '');
         $titulo = $lead['nome'];
         $subtitulo = 'Detalhes do lead comercial';
         $breadcrumbs = [
@@ -402,5 +403,19 @@ class CrmController
         } catch (\Exception $e) {
             return null;
         }
+    }
+
+    private function arquivosDoLead(string $observacoes): array
+    {
+        if (!preg_match_all('/-\s*(.+?):\s*(https?:\/\/\S+)/', $observacoes, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        return array_map(function ($match) {
+            return [
+                'nome' => trim($match[1]),
+                'url' => rtrim(trim($match[2]), " \t\n\r\0\x0B,.;"),
+            ];
+        }, $matches);
     }
 }

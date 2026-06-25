@@ -149,7 +149,49 @@ function produtoDecimalInput($value): string
                     </div>
                 </div>
             </div>
-
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6 class="card-title"><i class="bi bi-boxes me-2 text-warning"></i>Materiais da Ficha T&eacute;cnica</h6>
+                    <button type="button" class="btn btn-secondary btn-sm" id="addMaterial"><i class="bi bi-plus"></i> Adicionar</button>
+                </div>
+                <div class="p-3">
+                    <p class="small text-muted mb-2">Insumos consumidos por unidade deste produto. Ex: 1 m&sup2; de Lona 440g por m&sup2; impresso.</p>
+                    <div id="materiaisWrapper" class="d-flex flex-column gap-2">
+                        <?php foreach ($produtoMateriais as $pm): ?>
+                            <div class="border-kroma rounded-kroma p-2" data-mat-row>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-5">
+                                        <label class="form-label">Material</label>
+                                        <select class="form-select" name="mat_material_id[]" data-mat-select>
+                                            <option value="">-- Selecionar --</option>
+                                            <?php foreach ($contexto['materiais'] as $mat): ?>
+                                                <option value="<?= $mat['id'] ?>" data-unidade="<?= htmlspecialchars($mat['unidade']) ?>" <?= (string)$pm['material_id'] === (string)$mat['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars(($mat['codigo'] ? $mat['codigo'] . ' - ' : '') . $mat['nome']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Qtd./unid.</label>
+                                        <input class="form-control" name="mat_quantidade[]" value="<?= htmlspecialchars(rtrim(rtrim(number_format((float)$pm['quantidade'], 4, ',', '.'), '0'), ',')) ?>">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Unidade</label>
+                                        <input class="form-control" name="mat_unidade[]" value="<?= htmlspecialchars($pm['unidade'] ?? '') ?>" placeholder="m&sup2;, kg, un">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Obs.</label>
+                                        <input class="form-control" name="mat_observacao[]" value="<?= htmlspecialchars($pm['observacao'] ?? '') ?>">
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end">
+                                        <button type="button" class="btn btn-danger btn-sm w-100" data-remove-mat title="Remover"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h6 class="card-title"><i class="bi bi-layers me-2 text-info"></i>Variações</h6>
@@ -227,16 +269,61 @@ function produtoDecimalInput($value): string
                         <div class="col-6"><label class="form-label">Margem %</label><input class="form-control calc-produto" name="margem_percent" value="<?= htmlspecialchars($produto['margem_percent'] ?? 35) ?>"></div>
                         <div class="col-6"><label class="form-label">Impostos %</label><input class="form-control calc-produto" name="impostos_percent" value="<?= htmlspecialchars($produto['impostos_percent'] ?? 8) ?>"></div>
                         <div class="col-6"><label class="form-label">Comissão %</label><input class="form-control calc-produto" name="comissao_percent" value="<?= htmlspecialchars($produto['comissao_percent'] ?? 5) ?>"></div>
+                        <div class="col-12">
+                            <p class="small text-muted mb-1 mt-1">Descontos para tabela de preços</p>
+                        </div>
+                        <div class="col-6"><label class="form-label">Desconto Revenda %</label><input class="form-control calc-produto" name="desc_revenda_percent" id="desc_revenda_percent" value="<?= htmlspecialchars($produto['desc_revenda_percent'] ?? 15) ?>"></div>
+                        <div class="col-6"><label class="form-label">Desconto Terceirizado %</label><input class="form-control calc-produto" name="desc_terceirizado_percent" id="desc_terceirizado_percent" value="<?= htmlspecialchars($produto['desc_terceirizado_percent'] ?? 25) ?>"></div>
                     </div>
                     <hr>
                     <div class="d-flex flex-column gap-2">
                         <div class="d-flex justify-content-between"><span>Custo base</span><strong id="previewCustoProduto">R$ 0,00</strong></div>
                         <div class="d-flex justify-content-between"><span>Preço mínimo</span><span class="badge badge-warning" id="previewMinimoProduto">R$ 0,00</span></div>
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="fw-bold">Preço base</span>
-                            <strong class="h4 mb-0 text-primary-kroma" id="previewBaseProduto">R$ 0,00</strong>
+                            <span class="fw-bold">Preço base sugerido</span>
+                            <strong class="h5 mb-0 text-primary-kroma" id="previewBaseProduto">R$ 0,00</strong>
                         </div>
                     </div>
+                    <hr>
+                    <p class="small text-muted mb-2"><i class="bi bi-tag me-1"></i>Preço final por tipo de cliente</p>
+                    <div class="d-flex flex-column gap-3">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0"><i class="bi bi-person me-1"></i>Cliente Final</label>
+                                <span class="badge badge-secondary small" id="sugClienteFinal">R$ 0,00</span>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">R$</span>
+                                <input type="text" class="form-control money" name="preco_cliente_final" id="preco_cliente_final" value="<?= produtoMoneyInput($produto['preco_cliente_final'] ?? 0) ?>" placeholder="0,00">
+                                <button type="button" class="btn btn-secondary" data-apply-sug="cliente_final" title="Aplicar sugestão"><i class="bi bi-arrow-down-circle"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0"><i class="bi bi-shop me-1"></i>Revenda</label>
+                                <span class="badge badge-secondary small" id="sugRevenda">R$ 0,00</span>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">R$</span>
+                                <input type="text" class="form-control money" name="preco_revenda" id="preco_revenda" value="<?= produtoMoneyInput($produto['preco_revenda'] ?? 0) ?>" placeholder="0,00">
+                                <button type="button" class="btn btn-secondary" data-apply-sug="revenda" title="Aplicar sugestão"><i class="bi bi-arrow-down-circle"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label mb-0"><i class="bi bi-buildings me-1"></i>Terceirizado</label>
+                                <span class="badge badge-secondary small" id="sugTerceirizado">R$ 0,00</span>
+                            </div>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">R$</span>
+                                <input type="text" class="form-control money" name="preco_terceirizado" id="preco_terceirizado" value="<?= produtoMoneyInput($produto['preco_terceirizado'] ?? 0) ?>" placeholder="0,00">
+                                <button type="button" class="btn btn-secondary" data-apply-sug="terceirizado" title="Aplicar sugestão"><i class="bi bi-arrow-down-circle"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-3 w-100" id="aplicarTodasSugestoes">
+                        <i class="bi bi-magic me-1"></i>Aplicar todas as sugestões
+                    </button>
                 </div>
             </div>
 
@@ -279,6 +366,39 @@ function produtoDecimalInput($value): string
     </div>
 </form>
 
+<template id="materialTemplate">
+    <div class="border-kroma rounded-kroma p-2" data-mat-row>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Material</label>
+                <select class="form-select" name="mat_material_id[]" data-mat-select>
+                    <option value="">-- Selecionar --</option>
+                    <?php foreach ($contexto['materiais'] as $mat): ?>
+                        <option value="<?= $mat['id'] ?>" data-unidade="<?= htmlspecialchars($mat['unidade']) ?>">
+                            <?= htmlspecialchars(($mat['codigo'] ? $mat['codigo'] . ' - ' : '') . $mat['nome']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Qtd./unid.</label>
+                <input class="form-control" name="mat_quantidade[]" value="1">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Unidade</label>
+                <input class="form-control" name="mat_unidade[]" placeholder="m&sup2;, kg, un">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Obs.</label>
+                <input class="form-control" name="mat_observacao[]">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm w-100" data-remove-mat title="Remover"><i class="bi bi-trash"></i></button>
+            </div>
+        </div>
+    </div>
+</template>
+
 <template id="variacaoTemplate">
     <div class="border-kroma rounded-kroma p-3" data-variacao>
         <div class="d-flex justify-content-between align-items-start mb-3">
@@ -310,6 +430,16 @@ function produtoDecimalInput($value): string
             style: 'currency',
             currency: 'BRL'
         });
+        const moneyInput = value => value.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        let sugVals = {
+            cliente_final: 0,
+            revenda: 0,
+            terceirizado: 0
+        };
 
         const calc = () => {
             const form = document.getElementById('formProduto');
@@ -320,12 +450,23 @@ function produtoDecimalInput($value): string
             const margem = parseBR(form.elements['margem_percent']?.value);
             const impostos = parseBR(form.elements['impostos_percent']?.value);
             const comissao = parseBR(form.elements['comissao_percent']?.value);
+            const descRevenda = parseBR(form.elements['desc_revenda_percent']?.value);
+            const descTerceirizado = parseBR(form.elements['desc_terceirizado_percent']?.value);
+
             const custoComDesperdicio = custo * (1 + desperdicio / 100);
             const minimo = custoComDesperdicio * (1 + (impostos + comissao) / 100);
             const base = custoComDesperdicio * (1 + (margem + impostos + comissao) / 100);
+
+            sugVals.cliente_final = base;
+            sugVals.revenda = base * (1 - descRevenda / 100);
+            sugVals.terceirizado = base * (1 - descTerceirizado / 100);
+
             document.getElementById('previewCustoProduto').textContent = money(custoComDesperdicio);
             document.getElementById('previewMinimoProduto').textContent = money(minimo);
             document.getElementById('previewBaseProduto').textContent = money(base);
+            document.getElementById('sugClienteFinal').textContent = money(sugVals.cliente_final);
+            document.getElementById('sugRevenda').textContent = money(sugVals.revenda);
+            document.getElementById('sugTerceirizado').textContent = money(sugVals.terceirizado);
         };
 
         const renumerar = () => {
@@ -335,12 +476,51 @@ function produtoDecimalInput($value): string
             });
         };
 
+        const aplicarSugestao = (tipo) => {
+            const mapa = {
+                cliente_final: 'preco_cliente_final',
+                revenda: 'preco_revenda',
+                terceirizado: 'preco_terceirizado',
+            };
+            const input = document.getElementById(mapa[tipo]);
+            if (input) input.value = moneyInput(sugVals[tipo]);
+        };
+
         document.querySelectorAll('.calc-produto').forEach(input => input.addEventListener('input', calc));
+
+        document.querySelectorAll('[data-apply-sug]').forEach(btn => {
+            btn.addEventListener('click', () => aplicarSugestao(btn.dataset.applySug));
+        });
+
+        document.getElementById('aplicarTodasSugestoes')?.addEventListener('click', () => {
+            aplicarSugestao('cliente_final');
+            aplicarSugestao('revenda');
+            aplicarSugestao('terceirizado');
+        });
+
         document.getElementById('addVariacao')?.addEventListener('click', () => {
             const tpl = document.getElementById('variacaoTemplate');
             const wrapper = document.getElementById('variacoesWrapper');
             wrapper.appendChild(tpl.content.cloneNode(true));
             renumerar();
+        });
+        document.getElementById('addMaterial')?.addEventListener('click', () => {
+            const tpl = document.getElementById('materialTemplate');
+            const wrapper = document.getElementById('materiaisWrapper');
+            wrapper.appendChild(tpl.content.cloneNode(true));
+        });
+        document.addEventListener('click', event => {
+            if (event.target.closest('[data-remove-mat]')) {
+                event.target.closest('[data-mat-row]')?.remove();
+            }
+        });
+        document.addEventListener('change', event => {
+            if (event.target.matches('[data-mat-select]')) {
+                const opt = event.target.selectedOptions[0];
+                const row = event.target.closest('[data-mat-row]');
+                const unidInput = row?.querySelector('[name="mat_unidade[]"]');
+                if (unidInput && opt && !unidInput.value) unidInput.value = opt.dataset.unidade || '';
+            }
         });
         document.addEventListener('click', event => {
             const btn = event.target.closest('[data-remove-variacao]');

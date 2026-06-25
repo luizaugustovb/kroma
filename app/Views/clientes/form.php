@@ -199,10 +199,8 @@ $action    = $isEdicao ? (APP_URL . '/clientes/' . $cliente['id'] . '/editar') :
                         <label class="form-label" for="tipo_cliente">Tipo de Cliente</label>
                         <select class="form-select" id="tipo_cliente" name="tipo_cliente">
                             <option value="cliente_final" <?= ($cliente['tipo_cliente'] ?? '') === 'cliente_final' ? 'selected' : '' ?>>Cliente Final</option>
-                            <option value="revenda" <?= ($cliente['tipo_cliente'] ?? '') === 'revenda'       ? 'selected' : '' ?>>Revenda</option>
-                            <option value="parceiro" <?= ($cliente['tipo_cliente'] ?? '') === 'parceiro'      ? 'selected' : '' ?>>Parceiro</option>
-                            <option value="corporativo" <?= ($cliente['tipo_cliente'] ?? '') === 'corporativo'   ? 'selected' : '' ?>>Corporativo</option>
-                            <option value="orgao_publico" <?= ($cliente['tipo_cliente'] ?? '') === 'orgao_publico' ? 'selected' : '' ?>>Órgão Público</option>
+                            <option value="revenda" <?= in_array($cliente['tipo_cliente'] ?? '', ['revenda', 'parceiro']) ? 'selected' : '' ?>>Revenda / Parceiro</option>
+                            <option value="terceirizado" <?= in_array($cliente['tipo_cliente'] ?? '', ['terceirizado', 'corporativo', 'orgao_publico']) ? 'selected' : '' ?>>Terceirizado</option>
                         </select>
                     </div>
                     <div class="mb-3">

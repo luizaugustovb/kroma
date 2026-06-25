@@ -151,7 +151,7 @@ function portalPrazoBadge(?string $data, string $status): array {
                 <h6 class="card-title"><i class="bi bi-plus-circle me-2 text-success-kroma"></i>Solicitar orçamento</h6>
                 <span class="badge <?= $cliente ? 'badge-info' : 'badge-secondary' ?>"><?= $cliente ? 'Disponível' : 'Bloqueado' ?></span>
             </div>
-            <form action="<?= APP_URL ?>/portal/solicitar-orcamento" method="POST" class="p-3" data-loading>
+            <form action="<?= APP_URL ?>/portal/solicitar-orcamento" method="POST" class="p-3" enctype="multipart/form-data" data-loading>
                 <input type="hidden" name="csrf_token" value="<?= $csrfToken ?>">
                 <div class="row g-3">
                     <div class="col-md-6">
@@ -165,6 +165,12 @@ function portalPrazoBadge(?string $data, string $status): array {
                     <div class="col-12">
                         <label class="form-label">Descrição</label>
                         <textarea class="form-control" name="descricao" rows="4" required <?= $cliente ? '' : 'disabled' ?>></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Arquivos do projeto</label>
+                        <input class="form-control" type="file" name="arquivos[]" multiple <?= $cliente ? '' : 'disabled' ?>
+                               accept=".jpg,.jpeg,.png,.webp,.gif,.bmp,.tif,.tiff,.svg,.pdf,.cdr,.psd,.ai,.eps,.zip,.rar">
+                        <div class="small text-secondary mt-1">Aceita fotos, PDF, CDR, PSD, imagens, vetores e arquivos compactados.</div>
                     </div>
                     <div class="col-12 d-flex justify-content-end">
                         <button class="btn btn-primary" type="submit" <?= $cliente ? '' : 'disabled' ?>><i class="bi bi-send"></i> Enviar solicitação</button>

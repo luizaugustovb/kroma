@@ -22,6 +22,7 @@ const KROMA = {
         this.flash.init();
         this.tables.init();
         this.forms.init();
+        this.productSearch.init();
         this.tooltips.init();
     },
 
@@ -283,6 +284,196 @@ const KROMA = {
                     set('estado', data.uf);
                 })
                 .catch(() => {});
+        }
+    },
+
+    // ===================================================
+    // SELECT PESQUISAVEL DE PRODUTOS
+    // ===================================================
+    productSearch: {
+        selector: 'select[data-produto-select], select[data-catalogo-select]',
+        observer: null,
+
+        init() {
+            this.enhanceAll();
+
+            document.addEventListener('click', event => {
+                if (!event.target.closest('.produto-search')) {
+                    this.closeAll();
+                }
+            });
+
+            document.addEventListener('keydown', event => {
+                if (event.key === 'Escape') this.closeAll();
+            });
+
+            this.observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (!(node instanceof HTMLElement)) return;
+                        if (node.matches?.(this.selector)) this.enhance(node);
+                        node.querySelectorAll?.(this.selector).forEach(select => this.enhance(select));
+                    });
+                });
+            });
+
+            this.observer.observe(document.body, { childList: true, subtree: true });
+        },
+
+        enhanceAll(root = document) {
+            root.querySelectorAll(this.selector).forEach(select => this.enhance(select));
+        },
+
+        enhance(select) {
+            if (!select || select.dataset.produtoSearchEnhanced === 'true') return;
+            select.dataset.produtoSearchEnhanced = 'true';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'produto-search';
+            ['mb-1', 'mb-2', 'mb-3', 'mt-1', 'mt-2', 'mt-3'].forEach(cls => {
+                if (select.classList.contains(cls)) {
+                    wrapper.classList.add(cls);
+                    select.classList.remove(cls);
+                }
+            });
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'produto-search-button';
+            button.innerHTML = '<span class="produto-search-label"></span><i class="bi bi-chevron-down"></i>';
+
+            const panel = document.createElement('div');
+            panel.className = 'produto-search-panel';
+            panel.hidden = true;
+
+            const input = document.createElement('input');
+            input.type = 'search';
+            input.className = 'produto-search-input';
+            input.placeholder = 'Digite para filtrar...';
+            input.autocomplete = 'off';
+
+            const list = document.createElement('div');
+            list.className = 'produto-search-list';
+
+            const empty = document.createElement('div');
+            empty.className = 'produto-search-empty';
+            empty.textContent = 'Nenhum produto encontrado';
+            empty.hidden = true;
+
+            panel.append(input, list, empty);
+            select.parentNode.insertBefore(wrapper, select);
+            wrapper.append(select, button, panel);
+
+            const updateLabel = () => {
+                const selected = select.selectedOptions[0];
+                const text = selected?.textContent?.trim() || '-- Selecionar produto --';
+                button.querySelector('.produto-search-label').textContent = text;
+                button.classList.toggle('is-empty', !select.value);
+            };
+
+            const render = () => {
+                const termo = this.normalize(input.value);
+                const options = Array.from(select.options).filter(option => {
+                    if (option.disabled) return false;
+                    if (!termo) return true;
+                    const haystack = this.normalize([
+                        option.textContent,
+                        option.dataset.nome,
+                        option.dataset.codigo
+                    ].filter(Boolean).join(' '));
+                    return haystack.includes(termo);
+                });
+
+                list.replaceChildren();
+                empty.hidden = options.length > 0;
+
+                options.forEach(option => {
+                    const item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'produto-search-option';
+                    item.textContent = option.textContent.trim();
+                    item.dataset.value = option.value;
+                    item.classList.toggle('is-selected', option.value === select.value);
+                    item.addEventListener('click', () => {
+                        select.value = option.value;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                        updateLabel();
+                        panel.hidden = true;
+                        wrapper.classList.remove('is-open');
+                        button.focus();
+                    });
+                    list.appendChild(item);
+                });
+            };
+
+            const open = () => {
+                this.closeAll(wrapper);
+                panel.hidden = false;
+                wrapper.classList.add('is-open');
+                input.value = '';
+                render();
+                requestAnimationFrame(() => input.focus());
+            };
+
+            button.addEventListener('click', () => {
+                if (panel.hidden) {
+                    open();
+                } else {
+                    panel.hidden = true;
+                    wrapper.classList.remove('is-open');
+                }
+            });
+
+            input.addEventListener('input', render);
+            input.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    list.querySelector('.produto-search-option')?.click();
+                }
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    list.querySelector('.produto-search-option')?.focus();
+                }
+            });
+
+            list.addEventListener('keydown', event => {
+                const current = event.target.closest('.produto-search-option');
+                if (!current) return;
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    (current.nextElementSibling || list.firstElementChild)?.focus();
+                }
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    (current.previousElementSibling || input)?.focus();
+                }
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    panel.hidden = true;
+                    wrapper.classList.remove('is-open');
+                    button.focus();
+                }
+            });
+
+            select.addEventListener('change', updateLabel);
+            updateLabel();
+        },
+
+        closeAll(except = null) {
+            document.querySelectorAll('.produto-search.is-open').forEach(wrapper => {
+                if (wrapper === except) return;
+                wrapper.classList.remove('is-open');
+                const panel = wrapper.querySelector('.produto-search-panel');
+                if (panel) panel.hidden = true;
+            });
+        },
+
+        normalize(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
         }
     },
 

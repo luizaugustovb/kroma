@@ -194,7 +194,7 @@ class ComprasController
         }
 
         $compra = $this->buscarCompra($id);
-        if (!$compra || in_array($compra['status'], ['recebida','cancelada'], true)) {
+        if (!$compra || in_array($compra['status'], ['recebida', 'cancelada'], true)) {
             $_SESSION['flash_error'] = 'Compra inválida para recebimento.';
             header('Location: ' . APP_URL . '/compras');
             exit;
@@ -335,6 +335,50 @@ class ComprasController
     public function atualizarFornecedor(string $id): void
     {
         $this->salvarFornecedor($id);
+    }
+
+    public function excluir(string $id): void
+    {
+        if (!Auth::verificarCsrf($_POST['csrf_token'] ?? '')) {
+            $_SESSION['flash_error'] = 'Token inválido.';
+            header('Location: ' . APP_URL . '/compras');
+            exit;
+        }
+
+        if (!Auth::temPerfil('administrador')) {
+            $_SESSION['flash_error'] = 'Apenas administradores podem excluir compras.';
+            header('Location: ' . APP_URL . '/compras');
+            exit;
+        }
+
+        $compra = $this->buscarCompra($id);
+        if (!$compra) {
+            $_SESSION['flash_error'] = 'Compra não encontrada.';
+            header('Location: ' . APP_URL . '/compras');
+            exit;
+        }
+
+        if (!in_array($compra['status'], ['rascunho', 'cancelada'], true)) {
+            $_SESSION['flash_error'] = 'Somente compras em Rascunho ou Cancelada podem ser excluídas.';
+            header('Location: ' . APP_URL . '/compras');
+            exit;
+        }
+
+        try {
+            $pdo = db();
+            $pdo->beginTransaction();
+            $pdo->prepare("DELETE FROM compra_itens WHERE compra_id = ?")->execute([$id]);
+            $pdo->prepare("DELETE FROM compras WHERE id = ?")->execute([$id]);
+            Auth::registrarAuditoria('compras', 'excluir_permanente', (int)$id);
+            $pdo->commit();
+            $_SESSION['flash_success'] = 'Compra excluída permanentemente.';
+        } catch (\Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+            $_SESSION['flash_error'] = 'Erro ao excluir compra.';
+        }
+
+        header('Location: ' . APP_URL . '/compras');
+        exit;
     }
 
     private function salvar(?string $id = null): void

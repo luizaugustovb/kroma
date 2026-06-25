@@ -108,6 +108,19 @@ $valorEstoque = array_sum(array_map(fn($m) => (float)$m['estoque_atual'] * (floa
                                 <div class="d-flex gap-1">
                                     <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>" title="Ver"><i class="bi bi-eye"></i></a>
                                     <a class="btn btn-icon btn-secondary btn-sm" href="<?= APP_URL ?>/estoque/<?= $material['id'] ?>/editar" title="Editar"><i class="bi bi-pencil"></i></a>
+                                    <?php if (Auth::temPerfil('administrador')): ?>
+                                        <?php if ($material['status'] === 'inativo'): ?>
+                                            <form method="POST" action="<?= APP_URL ?>/estoque/<?= $material['id'] ?>/excluir" class="d-inline" onsubmit="return confirm('EXCLUIR PERMANENTEMENTE \" <?= htmlspecialchars(addslashes($material['nome'])) ?>\"? Esta ação não pode ser desfeita!')">
+                                                <input type="hidden" name="csrf_token" value="<?= Auth::csrfToken() ?>">
+                                                <button type="submit" class="btn btn-icon btn-danger btn-sm" title="Excluir permanentemente"><i class="bi bi-trash-fill"></i></button>
+                                            </form>
+                                        <?php else: ?>
+                                            <form method="POST" action="<?= APP_URL ?>/estoque/<?= $material['id'] ?>/excluir" class="d-inline" onsubmit="return confirm('Inativar material \" <?= htmlspecialchars(addslashes($material['nome'])) ?>\"?')">
+                                                <input type="hidden" name="csrf_token" value="<?= Auth::csrfToken() ?>">
+                                                <button type="submit" class="btn btn-icon btn-warning btn-sm" title="Inativar"><i class="bi bi-slash-circle"></i></button>
+                                            </form>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
